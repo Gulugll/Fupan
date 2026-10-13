@@ -29,7 +29,7 @@ func Run(cfg *config.Config) error {
 		return err
 	}
 	registerRoutes(r, app)
-	registerStatic(r, cfg)
+	registerStatic(r, cfg.Dev)
 
 	log.Printf("复磐 FuPan 启动于 http://localhost%s", cfg.Addr)
 	return r.Run(cfg.Addr)
@@ -65,15 +65,4 @@ func registerRoutes(r *gin.Engine, app *App) {
 
 	// 向量检索调试端点（验证向量链路；完整 RAG 在 V1.0）。
 	api.GET("/search", app.debugSearch)
-}
-
-// registerStatic 前端构建产物服务；dev 模式下由 Vite 自己提供页面。
-func registerStatic(r *gin.Engine, cfg *config.Config) {
-	if cfg.Dev {
-		return
-	}
-	// 阶段 8：替换为 go:embed 的 web/dist + SPA fallback。
-	r.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "前端构建产物未嵌入（用 -dev 模式或先构建 web/dist）"})
-	})
 }
