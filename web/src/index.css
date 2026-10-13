@@ -1,0 +1,3 @@
+@import "tailwindcss";
+
+/* i18n key 说明：界面文案集中在各组件中文字符串，后续接 i18n 包时替换为 t("key")。 */
