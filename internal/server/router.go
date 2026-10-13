@@ -49,6 +49,22 @@ func registerRoutes(r *gin.Engine, app *App) {
 	api.POST("/libraries/:libId/documents", app.uploadDocument)
 	api.GET("/documents/:docId", app.getDocument)
 	api.DELETE("/documents/:docId", app.deleteDocument)
+
+	// 卡片生成（阶段 5）。
+	api.POST("/cardgen/preview", app.previewCards)
+	api.POST("/cardgen/commit", app.commitCards)
+
+	// 复习闭环（阶段 6）。
+	api.GET("/libraries/:libId/review/queue", app.reviewQueue)
+	api.POST("/cards/:cardId/review", app.reviewCard)
+	api.GET("/cards/:cardId/source", app.cardSource)
+
+	// 设置。
+	api.GET("/settings", app.getSettings)
+	api.PUT("/settings", app.putSettings)
+
+	// 向量检索调试端点（验证向量链路；完整 RAG 在 V1.0）。
+	api.GET("/search", app.debugSearch)
 }
 
 // registerStatic 前端构建产物服务；dev 模式下由 Vite 自己提供页面。

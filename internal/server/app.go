@@ -27,6 +27,8 @@ type App struct {
 	store     repo.Store
 	vectors   vector.VectorStore
 	importSvc *service.ImportService
+	cardSvc   *service.CardService
+	reviewSvc *service.ReviewService
 	settings  *service.SettingsService
 }
 
@@ -41,15 +43,16 @@ func newApp(cfg *config.Config) (*App, error) {
 
 	vectors := connectVectors(context.Background(), cfg, settings)
 
-	app := &App{
+	return &App{
 		cfg:       cfg,
 		db:        db,
 		store:     store,
 		vectors:   vectors,
 		settings:  settings,
 		importSvc: service.NewImportService(store, settings.Embedder(), vectors),
-	}
-	return app, nil
+		cardSvc:   service.NewCardService(store, settings),
+		reviewSvc: service.NewReviewService(store, settings),
+	}, nil
 }
 
 // connectVectors 连接 Milvus；失败降级 NoopStore（本地优先：无 Docker 也能用）。
