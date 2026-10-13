@@ -1,0 +1,22 @@
+# Go
+*.exe
+*.test
+*.out
+/bin/
+fupan
+fupan-darwin*
+
+# 数据
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# Node
+web/node_modules/
+web/dist/
+
+# 环境与编辑器
+.env
+.DS_Store
+.idea/
