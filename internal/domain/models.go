@@ -6,19 +6,19 @@ import "time"
 
 // Library 知识库（多库支持，设计文档 10.1 决策 #7）。
 type Library struct {
-	ID          string
-	Name        string
-	Description string
-	CreatedAt   time.Time
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // Document 已导入文档。
 type Document struct {
-	ID        string
-	LibraryID string
-	Title     string
-	Format    string // "md" | "txt"
-	CreatedAt time.Time
+	ID        string    `json:"id"`
+	LibraryID string    `json:"library_id"`
+	Title     string    `json:"title"`
+	Format    string    `json:"format"` // "md" | "txt"
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ChunkKind 区分父块（上下文单元，存 SQLite）与子块（检索单元，进向量库）。
@@ -39,18 +39,18 @@ const (
 
 // Chunk 切片。content 不可变：修订一律插入 version+1 的新行。
 type Chunk struct {
-	ID        string
-	DocID     string
-	ParentID  string // 子块指向父块；父块为空
-	Kind      ChunkKind
-	TitlePath string // 如 "机器学习 > 2.3 损失函数"
-	Seq       int    // 块序号
-	Content   string
-	CharStart int
-	CharEnd   int
-	Author    ChunkAuthor
-	Version   int
-	CreatedAt time.Time
+	ID        string      `json:"id"`
+	DocID     string      `json:"doc_id"`
+	ParentID  string      `json:"parent_id"`
+	Kind      ChunkKind   `json:"kind"`
+	TitlePath string      `json:"title_path"`
+	Seq       int         `json:"seq"`
+	Content   string      `json:"content"`
+	CharStart int         `json:"char_start"`
+	CharEnd   int         `json:"char_end"`
+	Author    ChunkAuthor `json:"author"`
+	Version   int         `json:"version"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 // CardType MVP 仅问答卡（设计文档 10.2）。
@@ -60,15 +60,15 @@ const CardQA CardType = "qa"
 
 // Card 卡片。source_chunk_id 溯源必填。
 type Card struct {
-	ID            string
-	LibraryID     string
-	Front         string
-	Back          string
-	Type          CardType
-	SourceChunkID string // NOT NULL，溯源锚点
-	SourceVersion int
-	Status        string // "active"
-	CreatedAt     time.Time
+	ID            string    `json:"id"`
+	LibraryID     string    `json:"library_id"`
+	Front         string    `json:"front"`
+	Back          string    `json:"back"`
+	Type          CardType  `json:"type"`
+	SourceChunkID string    `json:"source_chunk_id"`
+	SourceVersion int       `json:"source_version"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // ScheduleState FSRS 卡片状态。
@@ -83,22 +83,22 @@ const (
 
 // Schedule 调度状态（对应 go-fsrs 的 Card）。
 type Schedule struct {
-	CardID         string
-	State          ScheduleState
-	Due            time.Time
-	Stability      float64
-	Difficulty     float64
-	ElapsedDays    int
-	ScheduledDays  int
-	Reps           int
-	Lapses         int
-	IntroducedDate string // "2006-01-02"，计每日新卡上限
+	CardID         string        `json:"card_id"`
+	State          ScheduleState `json:"state"`
+	Due            time.Time     `json:"due"`
+	Stability      float64       `json:"stability"`
+	Difficulty     float64       `json:"difficulty"`
+	ElapsedDays    int           `json:"elapsed_days"`
+	ScheduledDays  int           `json:"scheduled_days"`
+	Reps           int           `json:"reps"`
+	Lapses         int           `json:"lapses"`
+	IntroducedDate string        `json:"introduced_date"`
 }
 
 // ReviewLog 复习记录。Rating 1–4 与 UI 等级一一对应（设计文档 3 模式 A）。
 type ReviewLog struct {
-	ID         string
-	CardID     string
-	Rating     int // 1=again 2=hard 3=good 4=easy
-	ReviewedAt time.Time
+	ID         string    `json:"id"`
+	CardID     string    `json:"card_id"`
+	Rating     int       `json:"rating"` // 1=again 2=hard 3=good 4=easy
+	ReviewedAt time.Time `json:"reviewed_at"`
 }

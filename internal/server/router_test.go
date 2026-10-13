@@ -11,10 +11,17 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
+	t.Setenv("FUPAN_VECTOR_DISABLED", "1")
+	cfg := &config.Config{Dev: true, DataDir: t.TempDir()}
+	app, err := newApp(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.db.Close()
+
 	gin.SetMode(gin.TestMode)
-	cfg := &config.Config{Dev: true}
 	r := gin.New()
-	registerRoutes(r, cfg)
+	registerRoutes(r, app)
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/health", nil))

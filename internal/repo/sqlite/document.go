@@ -51,6 +51,23 @@ func (s *store) ListDocuments(ctx context.Context, libraryID string) ([]domain.D
 	return out, rows.Err()
 }
 
+func (s *store) ListDocIDs(ctx context.Context, libraryID string) ([]string, error) {
+	rows, err := s.q.QueryContext(ctx, `SELECT id FROM documents WHERE library_id=?`, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 func (s *store) DeleteDocument(ctx context.Context, id string) error {
 	_, err := s.q.ExecContext(ctx, `DELETE FROM documents WHERE id=?`, id)
 	return err

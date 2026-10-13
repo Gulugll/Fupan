@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/Gulugll/fupan/internal/domain"
+	"github.com/Gulugll/fupan/internal/repo"
 )
 
-var ErrNotFound = errors.New("记录不存在")
+// ErrNotFound 兼容引用（哨兵错误定义在 repo 包）。
+var ErrNotFound = repo.ErrNotFound
 
 func (s *store) CreateLibrary(ctx context.Context, l *domain.Library) error {
 	_, err := s.q.ExecContext(ctx,

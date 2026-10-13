@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/Gulugll/fupan/internal/config"
 )
 
@@ -23,20 +24,31 @@ func Run(cfg *config.Config) error {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	registerRoutes(r, cfg)
-
-	// 前端静态资源：embed 或 dev 回退（阶段 8 完整接入 embed）。
+	app, err := newApp(cfg)
+	if err != nil {
+		return err
+	}
+	registerRoutes(r, app)
 	registerStatic(r, cfg)
 
 	log.Printf("复磐 FuPan 启动于 http://localhost%s", cfg.Addr)
 	return r.Run(cfg.Addr)
 }
 
-func registerRoutes(r *gin.Engine, cfg *config.Config) {
+func registerRoutes(r *gin.Engine, app *App) {
 	api := r.Group("/api")
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "app": "fupan"})
 	})
+
+	// 知识库与文档（阶段 4）。
+	api.GET("/libraries", app.listLibraries)
+	api.POST("/libraries", app.createLibrary)
+	api.DELETE("/libraries/:libId", app.deleteLibrary)
+	api.GET("/libraries/:libId/documents", app.listDocuments)
+	api.POST("/libraries/:libId/documents", app.uploadDocument)
+	api.GET("/documents/:docId", app.getDocument)
+	api.DELETE("/documents/:docId", app.deleteDocument)
 }
 
 // registerStatic 前端构建产物服务；dev 模式下由 Vite 自己提供页面。

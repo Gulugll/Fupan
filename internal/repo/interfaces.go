@@ -3,10 +3,14 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Gulugll/fupan/internal/domain"
 )
+
+// ErrNotFound 目标记录不存在的哨兵错误。
+var ErrNotFound = errors.New("记录不存在")
 
 // Store 复磐存储统一接口。所有多表操作通过 Tx 保证原子性。
 // 生命周期（Close）由具体实现的连接类型承担，不在本接口内。
@@ -24,6 +28,7 @@ type Store interface {
 	CreateDocument(ctx context.Context, d *domain.Document) error
 	GetDocument(ctx context.Context, id string) (*domain.Document, error)
 	ListDocuments(ctx context.Context, libraryID string) ([]domain.Document, error)
+	ListDocIDs(ctx context.Context, libraryID string) ([]string, error)
 	DeleteDocument(ctx context.Context, id string) error
 
 	// --- Chunk ---
@@ -35,6 +40,8 @@ type Store interface {
 	// --- Card ---
 	CreateCards(ctx context.Context, cards []domain.Card) error
 	GetCard(ctx context.Context, id string) (*domain.Card, error)
+	// DeleteCardsByDoc 删除某文档全部切片所挂靠的卡片（调度与复习日志经外键级联）。
+	DeleteCardsByDoc(ctx context.Context, docID string) error
 
 	// --- Schedule / ReviewLog ---
 	GetSchedule(ctx context.Context, cardID string) (*domain.Schedule, error)
