@@ -27,3 +27,4 @@ internal/server/webdist/
 internal/server/webdist/*
 !internal/server/webdist/index.html
 .ollama-models/
+.playwright-cli/

@@ -1,0 +1,33 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: 磐
+      - generic [ref=f1e7]:
+        - heading "复磐" [level=1] [ref=f1e8]
+        - paragraph [ref=f1e9]: 把笔记变成记忆的磐石
+    - paragraph [ref=f1e10]: 知 识 库
+    - navigation [ref=f1e11]:
+      - link "向量闭环验证" [ref=f1e12] [cursor=pointer]:
+        - /url: "#/library/c1d76c81-6163-44b8-a0f0-c0e3be67d6fa"
+      - link "go" [ref=f1e13] [cursor=pointer]:
+        - /url: "#/library/9764b6af-2260-4c02-9cf3-f05ece5c2305"
+    - generic [ref=f1e14]:
+      - button "＋ 新建知识库" [ref=f1e15]
+      - link "设置" [ref=f1e16] [cursor=pointer]:
+        - /url: "#/settings"
+  - main [ref=f1e17]:
+    - generic [ref=f1e18]:
+      - generic [ref=f1e19]:
+        - heading "文档" [level=2] [ref=f1e20]
+        - link "开始复习" [ref=f1e21] [cursor=pointer]:
+          - /url: "#/review/c1d76c81-6163-44b8-a0f0-c0e3be67d6fa"
+      - generic [ref=f1e22] [cursor=pointer]:
+        - paragraph [ref=f1e23]: 拖拽 .md / .txt 文件到此处，或点击选择
+        - paragraph [ref=f1e24]: 导入后自动按标题树切片，代码块与表格不会拆开
+      - list [ref=f1e25]:
+        - listitem [ref=f1e26]:
+          - link "vec-test.md3 个切片" [ref=f1e27] [cursor=pointer]:
+            - /url: "#/document/0cc9d54a-3306-4f0d-8a06-f590843e9f35"
+            - text: vec-test.md
+            - generic [ref=f1e28]: 3 个切片
+          - button "删除" [ref=f1e29]

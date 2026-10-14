@@ -34,15 +34,15 @@ export default function LibraryDetail() {
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">文档</h2>
+    <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold">文档</h2>
         {libId && (
           <Link
             to={`/review/${libId}`}
-            className="rounded-md bg-stone-800 px-4 py-2 text-sm text-white hover:bg-stone-700"
+            className="rounded-lg bg-ink px-4 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
           >
-            ▶ 开始复习
+            开始复习
           </Link>
         )}
       </div>
@@ -58,8 +58,10 @@ export default function LibraryDetail() {
           if (f) upload(f);
         }}
         onClick={() => fileRef.current?.click()}
-        className={`cursor-pointer rounded-xl border-2 border-dashed p-10 text-center transition ${
-          dragOver ? "border-stone-500 bg-stone-100" : "border-stone-300 hover:border-stone-400"
+        className={`cursor-pointer rounded-xl border-2 border-dashed p-10 text-center transition-colors ${
+          dragOver
+            ? "border-seal bg-[#faf3ec]"
+            : "border-line bg-card hover:border-ink-soft"
         }`}
       >
         <input
@@ -70,23 +72,29 @@ export default function LibraryDetail() {
           onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
         />
         {uploading ? (
-          <p className="text-sm text-stone-500">正在导入并切片……</p>
+          <p className="inline-flex items-center gap-2 text-sm text-ink-soft">
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-seal" />
+            正在导入并切片……
+          </p>
         ) : (
           <>
-            <p className="text-sm text-stone-600">拖拽 <b>.md / .txt</b> 文件到此处，或点击选择</p>
-            <p className="mt-1 text-xs text-stone-400">导入后自动按标题树切片（代码块、表格不拆开）</p>
+            <p className="text-sm text-ink">拖拽 <b>.md / .txt</b> 文件到此处，或点击选择</p>
+            <p className="mt-1.5 text-xs text-faint">导入后自动按标题树切片，代码块与表格不会拆开</p>
           </>
         )}
       </div>
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-3 text-sm text-seal">{error}</p>}
 
       {/* 文档列表 */}
-      <ul className="mt-6 divide-y divide-stone-100">
+      <ul className="mt-6 space-y-2">
         {docs.map((d) => (
-          <li key={d.id} className="flex items-center justify-between py-3">
-            <Link to={`/document/${d.id}`} className="flex-1 group">
-              <span className="text-sm font-medium group-hover:underline">{d.title}</span>
-              <span className="ml-3 text-xs text-stone-400">{d.chunk_count} 个切片</span>
+          <li
+            key={d.id}
+            className="group flex items-center justify-between rounded-lg border border-line bg-card px-4 py-3 paper-shadow"
+          >
+            <Link to={`/document/${d.id}`} className="flex-1">
+              <span className="text-sm font-medium group-hover:text-seal">{d.title}</span>
+              <span className="ml-3 text-xs text-faint">{d.chunk_count} 个切片</span>
             </Link>
             <button
               onClick={async () => {
@@ -95,14 +103,14 @@ export default function LibraryDetail() {
                   load();
                 }
               }}
-              className="text-xs text-stone-400 hover:text-red-500"
+              className="text-xs text-faint opacity-0 transition-opacity hover:text-seal group-hover:opacity-100"
             >
               删除
             </button>
           </li>
         ))}
         {docs.length === 0 && !uploading && (
-          <li className="py-6 text-center text-xs text-stone-400">还没有文档</li>
+          <li className="py-6 text-center text-xs text-faint">还没有文档</li>
         )}
       </ul>
     </div>

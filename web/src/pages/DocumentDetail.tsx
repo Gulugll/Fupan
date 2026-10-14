@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, Chunk, PreviewCard } from "../api/client";
 
-// 文档详情：chunk 树（父块分组）→ 勾选子块小节 → 卡片预览勾选 → 确认入库。
+// 文档详情：chunk 按父块分组 → 勾选小节（支持组全选）→ 卡片预览勾选 → 入库。
 export default function DocumentDetail() {
   const { docId } = useParams();
   const [doc, setDoc] = useState<{ id: string; title: string; format: string; library_id: string } | null>(null);
@@ -24,12 +24,29 @@ export default function DocumentDetail() {
 
   const children = chunks.filter((c) => c.kind === "child");
   const parents = chunks.filter((c) => c.kind === "parent");
-  const parentOf = (c: Chunk) => parents.find((p) => p.id === c.parent_id);
+
+  // 父块 → 其子块 的分组视图。
+  const groups = useMemo(
+    () => parents.map((p) => ({ parent: p, items: children.filter((c) => c.parent_id === p.id) })),
+    [parents, children]
+  );
 
   const toggle = (id: string) => {
     setSelected((s) => {
       const n = new Set(s);
       n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  const groupSelectedCount = (g: { items: Chunk[] }) =>
+    g.items.filter((c) => selected.has(c.id)).length;
+
+  const toggleGroup = (g: { items: Chunk[] }) => {
+    const all = groupSelectedCount(g) === g.items.length;
+    setSelected((s) => {
+      const n = new Set(s);
+      g.items.forEach((c) => (all ? n.delete(c.id) : n.add(c.id)));
       return n;
     });
   };
@@ -44,6 +61,12 @@ export default function DocumentDetail() {
       setPreviews(res.cards);
       setErrors(res.errors);
       setChosen(new Set(res.cards.map((_, i) => i)));
+      if (res.cards.length > 0) {
+        setTimeout(
+          () => document.getElementById("preview-list")?.scrollIntoView({ behavior: "smooth" }),
+          100
+        );
+      }
     } catch (e: unknown) {
       setErrors([(e as Error).message]);
     } finally {
@@ -57,70 +80,113 @@ export default function DocumentDetail() {
       front: p.front, back: p.back, source_chunk_id: p.source_chunk_id,
     }));
     const res = await api.commitCards(doc.library_id, cards);
-    setMessage(`已入库 ${res.count} 张卡片，可在「开始复习」中见到它们。`);
+    setMessage(`已入库 ${res.count} 张卡片，可到「开始复习」中见到它们。`);
     setPreviews([]);
     setSelected(new Set());
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <h2 className="text-xl font-bold mb-1">{doc?.title ?? "…"}</h2>
-      <p className="text-xs text-stone-400 mb-6">{children.length} 个切片 · 勾选小节后生成卡片</p>
+    <div className="mx-auto max-w-3xl px-8 py-8">
+      <h2 className="font-display text-2xl font-bold">{doc?.title ?? "…"}</h2>
+      <p className="mt-1 mb-6 text-xs text-faint">
+        {groups.length} 个章节 · {children.length} 个切片 · 勾选小节后生成卡片
+      </p>
 
-      {/* chunk 树：父块为组标题，子块可勾选 */}
+      {/* chunk 分组：父块为组标题，子块可勾选，支持组全选 */}
       <div className="space-y-4">
-        {parents.map((p) => (
-          <section key={p.id} className="rounded-lg border border-stone-200 bg-white">
-            <header className="border-b border-stone-100 px-4 py-2">
-              <span className="text-xs font-medium text-stone-500">📁 {p.title_path || "（无标题路径）"}</span>
-            </header>
-            <div className="divide-y divide-stone-50">
-              {children.filter((c) => c.parent_id === p.id).map((c) => (
-                <label key={c.id} className="flex gap-3 px-4 py-3 cursor-pointer hover:bg-stone-50">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(c.id)}
-                    onChange={() => toggle(c.id)}
-                    className="mt-1"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm whitespace-pre-wrap line-clamp-6">{c.content}</p>
-                    {parentOf(c) && (
-                      <p className="mt-1 text-xs text-stone-400">来源：{c.title_path}</p>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </section>
-        ))}
+        {groups.map((g) => {
+          const count = groupSelectedCount(g);
+          const all = g.items.length > 0 && count === g.items.length;
+          return (
+            <section key={g.parent.id} className="overflow-hidden rounded-xl border border-line bg-card paper-shadow">
+              <label className="flex cursor-pointer items-center gap-3 border-b border-line bg-[#faf7f0] px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={all}
+                  onChange={() => toggleGroup(g)}
+                  className="accent-seal"
+                />
+                <span className="flex-1 truncate font-display text-sm font-medium">
+                  {g.parent.title_path || "（无标题路径）"}
+                </span>
+                <span className="text-[11px] text-faint">
+                  {count > 0 ? `${count}/${g.items.length} 已选` : `${g.items.length} 小节`}
+                </span>
+              </label>
+              <div className="divide-y divide-[#f0ebdf]">
+                {g.items.map((c) => (
+                  <label key={c.id} className="flex cursor-pointer gap-3 px-4 py-3 transition-colors hover:bg-[#faf7f0]">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(c.id)}
+                      onChange={() => toggle(c.id)}
+                      className="mt-1 accent-seal"
+                    />
+                    <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-6 line-clamp-6">
+                      {c.content.replace(/^#{1,6}\s+[^\n]*\n+/gm, "")}
+                    </p>
+                  </label>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
-      <div className="sticky bottom-4 mt-6 flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
-        <span className="text-xs text-stone-500">已选 {selected.size} 个小节</span>
+      {/* 底部操作条 */}
+      <div className="sticky bottom-4 mt-6 flex items-center gap-3 rounded-xl border border-line bg-card p-3 paper-shadow">
+        <span className="text-xs text-ink-soft">已选 {selected.size} 个小节</span>
         <button
           onClick={genPreview}
           disabled={selected.size === 0 || previewing}
-          className="rounded-md bg-stone-800 px-4 py-1.5 text-sm text-white disabled:opacity-40"
+          className="rounded-lg bg-ink px-4 py-1.5 text-sm text-paper transition-colors hover:bg-ink/85 disabled:opacity-40"
         >
-          {previewing ? "生成中……" : "🤖 生成卡片预览"}
+          {previewing ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-paper/40 border-t-paper" />
+              正在生成，通常需要几秒……
+            </span>
+          ) : (
+            "生成卡片预览"
+          )}
         </button>
-        {message && <span className="text-sm text-green-700">{message}</span>}
+        {message && <span className="text-sm text-[#5a6f4e]">{message}</span>}
       </div>
       {errors.length > 0 && (
-        <ul className="mt-3 text-xs text-red-600 space-y-1">
-          {errors.map((e, i) => <li key={i}>⚠️ {e}</li>)}
+        <ul className="mt-3 space-y-1 text-xs text-seal">
+          {errors.map((e, i) => <li key={i}>{e}</li>)}
         </ul>
       )}
 
-      {/* 卡片预览：勾选后入库 */}
+      {/* 卡片预览：闪卡样式，勾选后入库 */}
       {previews.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-bold mb-3">卡片预览（{previews.length} 张，勾选要入库的）</h3>
+        <div id="preview-list" className="mt-10 scroll-mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-display text-lg font-bold">卡片预览 · {previews.length} 张</h3>
+            <div className="flex gap-2 text-xs">
+              <button
+                onClick={() => setChosen(new Set(previews.map((_, i) => i)))}
+                className="rounded-md border border-line px-2.5 py-1 text-ink-soft hover:border-ink-soft hover:text-ink"
+              >
+                全选
+              </button>
+              <button
+                onClick={() => setChosen(new Set())}
+                className="rounded-md border border-line px-2.5 py-1 text-ink-soft hover:border-ink-soft hover:text-ink"
+              >
+                清空
+              </button>
+            </div>
+          </div>
           <ul className="space-y-3">
             {previews.map((p, i) => (
-              <li key={i} className="rounded-lg border border-stone-200 bg-white p-4">
-                <label className="flex gap-3 cursor-pointer">
+              <li
+                key={i}
+                className={`rounded-xl border bg-card p-4 transition-colors ${
+                  chosen.has(i) ? "border-seal/50" : "border-line opacity-60"
+                }`}
+              >
+                <label className="flex cursor-pointer gap-3">
                   <input
                     type="checkbox"
                     checked={chosen.has(i)}
@@ -129,11 +195,16 @@ export default function DocumentDetail() {
                       n.has(i) ? n.delete(i) : n.add(i);
                       return n;
                     })}
+                    className="mt-1.5 accent-seal"
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{p.front}</p>
-                    <p className="mt-1 text-sm text-stone-600">{p.back}</p>
-                    <p className="mt-2 text-xs text-stone-400">📄 {p.doc_title} › {p.title_path}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] tracking-widest text-faint">问</p>
+                    <p className="font-display text-[15px] font-medium leading-7">{p.front}</p>
+                    <p className="mt-2 text-[11px] tracking-widest text-faint">答</p>
+                    <p className="text-sm leading-6 text-ink-soft">{p.back}</p>
+                    <p className="mt-2.5 border-t border-dashed border-line pt-2 text-xs text-faint">
+                      <span className="text-seal">溯源</span> {p.doc_title} › {p.title_path}
+                    </p>
                   </div>
                 </label>
               </li>
@@ -142,9 +213,9 @@ export default function DocumentDetail() {
           <button
             onClick={commit}
             disabled={chosen.size === 0}
-            className="mt-4 rounded-md bg-green-700 px-4 py-2 text-sm text-white disabled:opacity-40"
+            className="mt-5 rounded-lg bg-[#5a6f4e] px-5 py-2.5 text-sm text-white transition-colors hover:bg-[#4c5f42] disabled:opacity-40"
           >
-            ✓ 确认入库（{chosen.size} 张）
+            入库（{chosen.size} 张）
           </button>
         </div>
       )}

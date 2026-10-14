@@ -1,0 +1,48 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: 磐
+      - generic [ref=f2e7]:
+        - heading "复磐" [level=1] [ref=f2e8]
+        - paragraph [ref=f2e9]: 把笔记变成记忆的磐石
+    - paragraph [ref=f2e10]: 知 识 库
+    - navigation [ref=f2e11]:
+      - link "向量闭环验证" [ref=f2e12] [cursor=pointer]:
+        - /url: "#/library/c1d76c81-6163-44b8-a0f0-c0e3be67d6fa"
+      - link "go" [ref=f2e13] [cursor=pointer]:
+        - /url: "#/library/9764b6af-2260-4c02-9cf3-f05ece5c2305"
+    - generic [ref=f2e14]:
+      - button "＋ 新建知识库" [ref=f2e15]
+      - link "设置" [ref=f2e16] [cursor=pointer]:
+        - /url: "#/settings"
+  - main [ref=f2e17]:
+    - generic [ref=f2e18]:
+      - generic [ref=f2e20]:
+        - generic [ref=f2e21]: 新卡 · 第 1 张 / 共 1 张
+        - generic [ref=f2e22]: 空格翻卡，1–4 评分
+      - generic [ref=f2e27]:
+        - button "问 交叉熵通常与哪种函数配合使用？ 点击卡片或按空格翻面" [ref=f2e28] [cursor=pointer]:
+          - generic [ref=f2e29]: 问
+          - generic [ref=f2e30]: 交叉熵通常与哪种函数配合使用？
+          - generic [ref=f2e32]: 点击卡片或按空格翻面
+        - generic [ref=f2e33]:
+          - generic [ref=f2e34]: 答
+          - generic [ref=f2e35]: 交叉熵通常与哪种函数配合使用？
+          - generic [ref=f2e37]: 交叉熵在分类任务中配合 softmax 使用，衡量两个概率分布的差异。
+      - button "溯源 vec-test.md › 机器学习笔记 > 损失函数" [ref=f2e41]:
+        - generic [ref=f2e42]: 溯源
+        - text: vec-test.md
+        - generic [ref=f2e43]: › 机器学习笔记 > 损失函数
+      - generic [ref=f2e44]:
+        - button "1 完全想不起来" [ref=f2e45]:
+          - generic [ref=f2e46]: "1"
+          - text: 完全想不起来
+        - button "2 有点模糊" [ref=f2e47]:
+          - generic [ref=f2e48]: "2"
+          - text: 有点模糊
+        - button "3 想起来了" [ref=f2e49]:
+          - generic [ref=f2e50]: "3"
+          - text: 想起来了
+        - button "4 秒答" [ref=f2e51]:
+          - generic [ref=f2e52]: "4"
+          - text: 秒答

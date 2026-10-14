@@ -1,3 +1,46 @@
 @import "tailwindcss";
 
+/* 复磐主题令牌：宣纸米白 / 墨色 / 印章朱红 / 荧光笔黄。
+   标题用宋体系衬线（纸质学习感），正文系统黑体保证可读性。 */
+@theme {
+  --color-paper: #f6f3ec;      /* 页面底色：宣纸 */
+  --color-card: #fffdf8;       /* 卡片：更亮的纸 */
+  --color-ink: #2b2723;        /* 墨色正文 */
+  --color-ink-soft: #6e655a;   /* 淡墨辅助文字 */
+  --color-faint: #a39a8c;      /* 极淡注释 */
+  --color-seal: #b5432a;       /* 印章朱红：品牌与强调 */
+  --color-seal-deep: #93341f;
+  --color-mark: #f3e3ae;       /* 荧光笔黄：溯源高亮 */
+  --color-line: #e4ddcf;       /* 纸面细线 */
+  --font-display: Georgia, "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
+}
+
+/* 实体翻卡：3D 翻转 */
+.flip-scene { perspective: 1400px; }
+.flip-inner {
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.35, 0.15, 0.2, 1);
+}
+.flip-inner.is-flipped { transform: rotateY(180deg); }
+.flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-back { transform: rotateY(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner { transition: none; }
+}
+
+/* 卡片纸感阴影：柔和、偏暖，不用通用灰色投影 */
+.paper-shadow { box-shadow: 0 1px 2px rgba(90, 74, 50, 0.08), 0 4px 14px rgba(90, 74, 50, 0.07); }
+
+/* 复习页卡堆：下一张卡在底部露出的边缘 */
+.card-next {
+  position: absolute;
+  inset: auto 1.5rem -0.5rem 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.5rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  z-index: -1;
+}
+
 /* i18n key 说明：界面文案集中在各组件中文字符串，后续接 i18n 包时替换为 t("key")。 */
