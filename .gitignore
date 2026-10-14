@@ -26,3 +26,4 @@ internal/server/webdist/
 # embed 产物（构建时由 make web 覆盖；占位 index.html 保持 embed 模式可用）
 internal/server/webdist/*
 !internal/server/webdist/index.html
+.ollama-models/
