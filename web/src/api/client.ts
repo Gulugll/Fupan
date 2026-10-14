@@ -116,6 +116,12 @@ export const api = {
     fetch(`/api/cards/${cardId}/source`).then(handle<SourceInfo>),
 
   getSettings: () => fetch("/api/settings").then(handle<Record<string, string>>),
+  testSettings: (target: "chat" | "embed") =>
+    fetch("/api/settings/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    }).then(handle<{ ok: boolean; detail?: string }>),
   putSettings: (m: Record<string, string>) =>
     fetch("/api/settings", {
       method: "PUT",

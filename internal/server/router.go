@@ -62,6 +62,7 @@ func registerRoutes(r *gin.Engine, app *App) {
 	// 设置。
 	api.GET("/settings", app.getSettings)
 	api.PUT("/settings", app.putSettings)
+	api.POST("/settings/test", app.testSettings)
 
 	// 向量检索调试端点（验证向量链路；完整 RAG 在 V1.0）。
 	api.GET("/search", app.debugSearch)

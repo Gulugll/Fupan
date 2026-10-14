@@ -15,6 +15,10 @@ const (
 	KeyLLMAPIKey    = "llm.api_key"
 	KeyLLMChatModel = "llm.chat_model"
 	KeyLLMEmbedModel = "llm.embed_model"
+	// 嵌入独立配置：对话与嵌入可走不同服务商（如 DeepSeek 出卡片 + Ollama 本地嵌入）。
+	// 空值回退到对话的同名配置。
+	KeyEmbedBaseURL = "embed.base_url"
+	KeyEmbedAPIKey  = "embed.api_key"
 	KeyRetention    = "fsrs.retention"
 	KeyDailyNew     = "review.daily_new_limit"
 	KeyEmbedDim     = "embed.dim"
@@ -37,6 +41,8 @@ func (s *SettingsService) Effective(ctx context.Context) map[string]string {
 		KeyLLMAPIKey:     s.cfg.LLM.APIKey,
 		KeyLLMChatModel:  s.cfg.LLM.ChatModel,
 		KeyLLMEmbedModel: s.cfg.LLM.EmbedModel,
+		KeyEmbedBaseURL:  s.cfg.LLM.BaseURL, // 嵌入默认跟随对话端点
+		KeyEmbedAPIKey:   s.cfg.LLM.APIKey,
 		KeyRetention:     strconv.FormatFloat(s.cfg.Retention, 'f', -1, 64),
 		KeyDailyNew:      strconv.Itoa(s.cfg.DailyNewLimit),
 		KeyEmbedDim:      strconv.Itoa(s.cfg.EmbedDim),
@@ -90,10 +96,20 @@ func (s *SettingsService) FloatValue(ctx context.Context, key string, def float6
 	return def
 }
 
+// EmbedConfig 组装当前生效的嵌入客户端配置（独立于对话端点）。
+func (s *SettingsService) EmbedConfig(ctx context.Context) llm.Config {
+	m := s.Effective(ctx)
+	return llm.Config{
+		BaseURL:    m[KeyEmbedBaseURL],
+		APIKey:     m[KeyEmbedAPIKey],
+		EmbedModel: m[KeyLLMEmbedModel],
+	}
+}
+
 // Embedder 返回基于当前设置的嵌入函数（每次调用时动态取配置，Key 改动即生效）。
 func (s *SettingsService) Embedder() EmbedderFunc {
 	return func(ctx context.Context, texts []string) ([][]float32, error) {
-		client := llm.NewClient(s.LLMConfig(ctx))
+		client := llm.NewClient(s.EmbedConfig(ctx))
 		return client.Embed(ctx, texts)
 	}
 }
