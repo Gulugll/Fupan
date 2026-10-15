@@ -32,8 +32,10 @@ func (g *CardGenerator) GenerateForChunk(ctx context.Context, docTitle, titlePat
 	sys := "你是记忆卡片出题助手。根据给定的小节内容出问答卡，帮助用户长期记忆。要求：\n" +
 		"1. 只依据给定内容出题，不编造小节外的事实；\n" +
 		"2. 一卡一知识点：定义、事实优先，概念关系与 Why 类问题少量精出；\n" +
-		fmt.Sprintf("3. 输出 %d–%d 张卡；\n", MinCardsPerChunk, MaxCardsPerChunk) +
-		`4. 严格输出 JSON：{"cards":[{"front":"问题","back":"答案"}]}`
+		"3. front 必须是一句话以内的简短问题，禁止在正面放表格、代码块、长列表或大段文字；\n" +
+		"4. back 支持 Markdown：表格、代码块、列表等结构化内容一律放背面；表格用标准语法（| 分隔，第二行为 --- 对齐行，且表格前后各留一个空行）；\n" +
+		fmt.Sprintf("5. 输出 %d–%d 张卡；\n", MinCardsPerChunk, MaxCardsPerChunk) +
+		`6. 严格输出 JSON：{"cards":[{"front":"问题","back":"答案"}]}`
 
 	user := fmt.Sprintf("文档：%s\n小节路径：%s\n\n【小节所在上下文】\n%s\n\n【出题内容】\n%s",
 		docTitle, titlePath, clip(parentContent, 2000), clip(childContent, 2000))

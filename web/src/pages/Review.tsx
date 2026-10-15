@@ -127,26 +127,28 @@ export default function Review() {
       <div className="flip-scene relative">
         <div className="card-next" aria-hidden />
         <div className={`flip-inner ${flipped ? "is-flipped" : ""}`}>
-          {/* 正面：问题 */}
+          {/* 正面：问题（短内容居中；长内容卡片自然生长，页面滚动） */}
           <button
             onClick={() => !flipped && flip()}
             className="flip-face flex w-full cursor-pointer flex-col rounded-xl border border-line bg-card p-8 text-left paper-shadow focus-visible:outline-2 focus-visible:outline-seal"
           >
             <span className="text-[11px] tracking-widest text-faint">问</span>
-            <span className="flex flex-1 items-center justify-center py-4">
-              <Markdown text={card?.front ?? ""} inline className="font-display text-xl font-medium leading-relaxed" />
+            <span className="flex min-h-0 flex-1 flex-col justify-center py-2">
+              <span className="m-auto">
+                <Markdown text={card?.front ?? ""} inline className="font-display text-xl font-medium leading-relaxed" />
+              </span>
             </span>
             <span className="text-center text-[11px] text-faint">点击卡片或按空格翻面</span>
           </button>
 
-          {/* 背面：答案 */}
+          {/* 背面：答案（结构化内容 Markdown 渲染，卡片自然生长） */}
           <div className="flip-face flip-back flex w-full flex-col rounded-xl border border-line bg-card p-8 paper-shadow">
             <span className="text-[11px] tracking-widest text-faint">答</span>
             <span className="block pt-3 text-sm leading-6 text-ink-soft">
               <Markdown text={card?.front ?? ""} inline className="text-sm" />
             </span>
             <span className="my-3 block border-t border-dashed border-line" />
-            <span className="block flex-1">
+            <span className="block">
               <Markdown text={card?.back ?? ""} className="text-lg leading-relaxed" />
             </span>
           </div>
