@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, QueueItem, SourceInfo } from "../api/client";
+import Markdown from "../components/Markdown";
 
 // 复习页：实体翻卡（3D）→ 1–4 自评 → 下一张；空格翻卡、1–4 评分。
 // 等级与 FSRS rating 一一对应（设计文档 3 模式 A）。
@@ -137,7 +138,7 @@ export default function Review() {
           >
             <span className="text-[11px] tracking-widest text-faint">问</span>
             <span className="flex flex-1 items-center justify-center">
-              <span className="font-display text-xl font-medium leading-relaxed">{card?.front}</span>
+              <Markdown text={card?.front ?? ""} inline className="font-display text-xl font-medium leading-relaxed" />
             </span>
             <span className="text-center text-[11px] text-faint">点击卡片或按空格翻面</span>
           </button>
@@ -145,9 +146,13 @@ export default function Review() {
           {/* 背面：答案 */}
           <div className="flip-face flip-back absolute inset-0 flex w-full flex-col rounded-xl border border-line bg-card p-8 paper-shadow" style={{ minHeight: "18rem" }}>
             <span className="text-[11px] tracking-widest text-faint">答</span>
-            <span className="pt-3 text-sm leading-6 text-ink-soft">{card?.front}</span>
-            <span className="my-3 border-t border-dashed border-line" />
-            <span className="flex-1 text-lg leading-relaxed">{card?.back}</span>
+            <span className="block pt-3 text-sm leading-6 text-ink-soft">
+              <Markdown text={card?.front ?? ""} inline className="text-sm" />
+            </span>
+            <span className="my-3 block border-t border-dashed border-line" />
+            <span className="block flex-1 overflow-y-auto">
+              <Markdown text={card?.back ?? ""} className="text-lg leading-relaxed" />
+            </span>
           </div>
         </div>
       </div>

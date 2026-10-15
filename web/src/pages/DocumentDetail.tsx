@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, Chunk, PreviewCard } from "../api/client";
+import Markdown from "../components/Markdown";
 
-// 文档详情：chunk 按父块分组 → 勾选小节（支持组全选）→ 卡片预览勾选 → 入库。
+// 文档详情：chunk 按父块分组 → 勾选小节（支持全局/分组全选）→ 卡片预览勾选 → 入库。
+// 勾选只认复选框本身（一处控件），行与标题不再整行可点。
 export default function DocumentDetail() {
   const { docId } = useParams();
   const [doc, setDoc] = useState<{ id: string; title: string; format: string; library_id: string } | null>(null);
@@ -51,6 +53,12 @@ export default function DocumentDetail() {
     });
   };
 
+  // 全局全选/清空（覆盖所有小节）。
+  const toggleAll = () => {
+    setSelected((s) => (s.size === children.length ? new Set() : new Set(children.map((c) => c.id))));
+  };
+  const allSelected = children.length > 0 && selected.size === children.length;
+
   const genPreview = async () => {
     if (!doc?.library_id || selected.size === 0) return;
     setPreviewing(true);
@@ -88,34 +96,41 @@ export default function DocumentDetail() {
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
       <h2 className="font-display text-2xl font-bold">{doc?.title ?? "…"}</h2>
-      <p className="mt-1 mb-6 text-xs text-faint">
+      <p className="mt-1 mb-4 text-xs text-faint">
         {groups.length} 个章节 · {children.length} 个切片 · 勾选小节后生成卡片
+        <button
+          onClick={toggleAll}
+          className="ml-3 rounded-md border border-line px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink"
+        >
+          {allSelected ? "全不选" : "全选小节"}
+        </button>
       </p>
 
-      {/* chunk 分组：父块为组标题，子块可勾选，支持组全选 */}
+      {/* chunk 分组：组头复选框控制本组，小节行只认自己的复选框 */}
       <div className="space-y-4">
         {groups.map((g) => {
           const count = groupSelectedCount(g);
           const all = g.items.length > 0 && count === g.items.length;
           return (
             <section key={g.parent.id} className="overflow-hidden rounded-xl border border-line bg-card paper-shadow">
-              <label className="flex cursor-pointer items-center gap-3 border-b border-line bg-[#faf7f0] px-4 py-2.5">
+              <div className="flex items-center gap-3 border-b border-line bg-[#faf7f0] px-4 py-2.5">
                 <input
                   type="checkbox"
                   checked={all}
                   onChange={() => toggleGroup(g)}
+                  title="全选本组小节"
                   className="accent-seal"
                 />
-                <span className="flex-1 truncate font-display text-sm font-medium">
+                <span className="min-w-0 flex-1 truncate font-display text-sm font-medium">
                   {g.parent.title_path || "（无标题路径）"}
                 </span>
                 <span className="text-[11px] text-faint">
                   {count > 0 ? `${count}/${g.items.length} 已选` : `${g.items.length} 小节`}
                 </span>
-              </label>
+              </div>
               <div className="divide-y divide-[#f0ebdf]">
                 {g.items.map((c) => (
-                  <label key={c.id} className="flex cursor-pointer gap-3 px-4 py-3 transition-colors hover:bg-[#faf7f0]">
+                  <div key={c.id} className="flex gap-3 px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selected.has(c.id)}
@@ -125,7 +140,7 @@ export default function DocumentDetail() {
                     <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-6 line-clamp-6">
                       {c.content.replace(/^#{1,6}\s+[^\n]*\n+/gm, "")}
                     </p>
-                  </label>
+                  </div>
                 ))}
               </div>
             </section>
@@ -186,7 +201,7 @@ export default function DocumentDetail() {
                   chosen.has(i) ? "border-seal/50" : "border-line opacity-60"
                 }`}
               >
-                <label className="flex cursor-pointer gap-3">
+                <div className="flex gap-3">
                   <input
                     type="checkbox"
                     checked={chosen.has(i)}
@@ -199,14 +214,14 @@ export default function DocumentDetail() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] tracking-widest text-faint">问</p>
-                    <p className="font-display text-[15px] font-medium leading-7">{p.front}</p>
+                    <Markdown text={p.front} className="font-display text-[15px] font-medium leading-7" />
                     <p className="mt-2 text-[11px] tracking-widest text-faint">答</p>
-                    <p className="text-sm leading-6 text-ink-soft">{p.back}</p>
+                    <Markdown text={p.back} className="text-sm text-ink-soft" />
                     <p className="mt-2.5 border-t border-dashed border-line pt-2 text-xs text-faint">
                       <span className="text-seal">溯源</span> {p.doc_title} › {p.title_path}
                     </p>
                   </div>
-                </label>
+                </div>
               </li>
             ))}
           </ul>
