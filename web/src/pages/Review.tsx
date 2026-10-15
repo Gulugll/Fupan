@@ -123,34 +123,30 @@ export default function Review() {
         </div>
       </div>
 
-      {/* 卡堆 + 实体翻卡 */}
+      {/* 卡堆 + 实体翻卡（grid 叠放，高度随内容自适应） */}
       <div className="flip-scene relative">
         <div className="card-next" aria-hidden />
-        <div
-          className={`flip-inner relative ${flipped ? "is-flipped" : ""}`}
-          style={{ minHeight: "18rem" }}
-        >
+        <div className={`flip-inner ${flipped ? "is-flipped" : ""}`}>
           {/* 正面：问题 */}
           <button
             onClick={() => !flipped && flip()}
-            className="flip-face absolute inset-0 flex w-full cursor-pointer flex-col rounded-xl border border-line bg-card p-8 text-left paper-shadow focus-visible:outline-2 focus-visible:outline-seal"
-            style={{ minHeight: "18rem" }}
+            className="flip-face flex w-full cursor-pointer flex-col rounded-xl border border-line bg-card p-8 text-left paper-shadow focus-visible:outline-2 focus-visible:outline-seal"
           >
             <span className="text-[11px] tracking-widest text-faint">问</span>
-            <span className="flex flex-1 items-center justify-center">
+            <span className="flex flex-1 items-center justify-center py-4">
               <Markdown text={card?.front ?? ""} inline className="font-display text-xl font-medium leading-relaxed" />
             </span>
             <span className="text-center text-[11px] text-faint">点击卡片或按空格翻面</span>
           </button>
 
           {/* 背面：答案 */}
-          <div className="flip-face flip-back absolute inset-0 flex w-full flex-col rounded-xl border border-line bg-card p-8 paper-shadow" style={{ minHeight: "18rem" }}>
+          <div className="flip-face flip-back flex w-full flex-col rounded-xl border border-line bg-card p-8 paper-shadow">
             <span className="text-[11px] tracking-widest text-faint">答</span>
             <span className="block pt-3 text-sm leading-6 text-ink-soft">
               <Markdown text={card?.front ?? ""} inline className="text-sm" />
             </span>
             <span className="my-3 block border-t border-dashed border-line" />
-            <span className="block flex-1 overflow-y-auto">
+            <span className="block flex-1">
               <Markdown text={card?.back ?? ""} className="text-lg leading-relaxed" />
             </span>
           </div>

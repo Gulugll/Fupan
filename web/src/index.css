@@ -15,14 +15,22 @@
   --font-display: Georgia, "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
 }
 
-/* 实体翻卡：3D 翻转 */
+/* 实体翻卡：3D 翻转。
+   用 grid 叠放正反面（grid-area 1/1）：容器高度随内容自适应，两面天然等高；
+   旧方案 absolute 定位会写死高度，长内容（表格/列表）被截断。 */
 .flip-scene { perspective: 1400px; }
 .flip-inner {
+  display: grid;
+  min-height: 18rem;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.35, 0.15, 0.2, 1);
 }
 .flip-inner.is-flipped { transform: rotateY(180deg); }
-.flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 .flip-back { transform: rotateY(180deg); }
 
 @media (prefers-reduced-motion: reduce) {
