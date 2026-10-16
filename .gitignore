@@ -28,3 +28,9 @@ internal/server/webdist/*
 !internal/server/webdist/index.html
 .ollama-models/
 .playwright-cli/
+
+# WorkBuddy 本地记忆
+.workbuddy/
+
+# TS 构建缓存
+*.tsbuildinfo
