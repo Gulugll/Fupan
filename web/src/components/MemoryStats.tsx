@@ -27,12 +27,13 @@ export default function MemoryStats({ libId }: { libId: string }) {
 
   return (
     <div className="rounded-xl border border-line bg-card p-5 paper-shadow">
-      {/* 今日进度数字 */}
-      <div className="grid grid-cols-4 gap-3 text-center">
+      {/* 今日 / 明日进度数字 */}
+      <div className="grid grid-cols-5 gap-3 text-center">
         {[
           ["今日已复习", st.today_reviews, "次"],
           ["今日新卡", st.today_new, "张"],
-          ["当前到期", st.due_now, "张"],
+          ["今天待复习", st.forecast[0]?.count ?? 0, "张"],
+          ["明天预计", st.forecast[1]?.count ?? 0, "张"],
           ["卡片总数", st.total_cards, "张"],
         ].map(([label, value, unit]) => (
           <div key={label as string}>
