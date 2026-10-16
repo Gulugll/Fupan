@@ -62,7 +62,7 @@ func TestQueueMarksNewAndRespectsLimit(t *testing.T) {
 	ctx := context.Background()
 	_ = libID
 
-	q1, err := svc.Queue(ctx, libID)
+	q1, stats, err := svc.Queue(ctx, libID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,17 +74,31 @@ func TestQueueMarksNewAndRespectsLimit(t *testing.T) {
 			t.Fatal("全部应为新卡")
 		}
 	}
-	// introduced_date 已记：当天再取队列应为空。
-	q2, err := svc.Queue(ctx, libID)
+	if stats.DailyNewMax != 5 || stats.DailyNewUsed != 0 || stats.NewRemaining != 10 {
+		t.Fatalf("统计不对: %+v", stats)
+	}
+	// introduced_date 已记：当天再取队列应为空；仍处 new 状态的卡数不变（含已引入未评的）。
+	q2, stats2, err := svc.Queue(ctx, libID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(q2) != 0 {
 		t.Fatalf("当日配额用尽后队列应为空, got %d", len(q2))
 	}
+	if stats2.NewRemaining != 10 {
+		t.Fatalf("剩余新卡 = %d, 期望 10", stats2.NewRemaining)
+	}
+	// 强制模式：无视每日上限，把全部 new 状态卡取出。
+	q3, _, err := svc.Queue(ctx, libID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(q3) != 10 {
+		t.Fatalf("force_new 队列 = %d, 期望 10（全部新卡）", len(q3))
+	}
 	used, _ := store.CountNewIntroducedOn(ctx, time.Now().Format("2006-01-02"))
-	if used != 5 {
-		t.Fatalf("introduced 计数 = %d, 期望 5", used)
+	if used != 10 {
+		t.Fatalf("introduced 计数 = %d, 期望 10（force 也计数）", used)
 	}
 }
 

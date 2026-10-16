@@ -98,18 +98,22 @@ type QueueInput struct {
 	DueScheds    []domain.Schedule
 	NewCards     []domain.Card
 	NewScheds    []domain.Schedule
-	DailyNewUsed int // 今日已进入队列的新卡数
-	DailyNewMax  int // 每日新卡上限
+	DailyNewUsed int  // 今日已进入队列的新卡数
+	DailyNewMax  int  // 每日新卡上限
+	ForceNew     bool // 无视每日上限（用户主动加量）
 }
 
 // BuildQueue 组装今日复习队列：
 //  1. 到期卡优先、按 due 升序（由调用方排序）；
-//  2. 新卡每日上限 = DailyNewMax - DailyNewUsed；
+//  2. 新卡每日上限 = DailyNewMax - DailyNewUsed（ForceNew 时不受限）；
 //  3. 混排：每 NewInsertEvery 张到期卡后插 1 张新卡，剩余新卡追加队尾。
 func BuildQueue(in QueueInput) []domain.Card {
 	quota := in.DailyNewMax - in.DailyNewUsed
 	if quota < 0 {
 		quota = 0
+	}
+	if in.ForceNew {
+		quota = len(in.NewCards)
 	}
 	newQuota := quota
 	if newQuota > len(in.NewCards) {

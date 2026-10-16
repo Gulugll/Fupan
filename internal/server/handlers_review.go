@@ -10,14 +10,16 @@ type reviewReq struct {
 	Rating int `json:"rating" binding:"required,min=1,max=4"`
 }
 
-// reviewQueue 今日复习队列（到期优先混新卡，每日新卡上限）。
+// reviewQueue 今日复习队列（到期优先混新卡，每日新卡上限；
+// ?force_new=1 无视上限继续学新卡）。
 func (a *App) reviewQueue(c *gin.Context) {
-	items, err := a.reviewSvc.Queue(c.Request.Context(), c.Param("libId"))
+	forceNew := c.Query("force_new") == "1"
+	items, stats, err := a.reviewSvc.Queue(c.Request.Context(), c.Param("libId"), forceNew)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	c.JSON(http.StatusOK, gin.H{"items": items, "stats": stats})
 }
 
 // reviewCard 提交一次自评（rating 1–4）。

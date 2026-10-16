@@ -109,10 +109,18 @@ export const api = {
       body: JSON.stringify({ library_id: libraryId, cards }),
     }).then(handle<{ count: number; cards: unknown[] }>),
 
-  reviewQueue: (libId: string) =>
-    fetch(`/api/libraries/${libId}/review/queue`)
-      .then(handle<{ items: QueueItem[] }>)
-      .then((r) => ({ items: r.items ?? [] })),
+  reviewQueue: (libId: string, forceNew = false) =>
+    fetch(`/api/libraries/${libId}/review/queue${forceNew ? "?force_new=1" : ""}`)
+      .then(handle<{
+        items: QueueItem[];
+        stats?: {
+          due_count: number;
+          new_remaining: number;
+          daily_new_used: number;
+          daily_new_max: number;
+        };
+      }>)
+      .then((r) => ({ items: r.items ?? [], stats: r.stats ?? null })),
   reviewCard: (cardId: string, rating: number) =>
     fetch(`/api/cards/${cardId}/review`, {
       method: "POST",

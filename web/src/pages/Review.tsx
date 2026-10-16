@@ -12,6 +12,8 @@ const RATINGS = [
   { level: 4, label: "秒答", key: "4", cls: "bg-[#5a6f4e] hover:bg-[#4c5f42] border-[#5a6f4e]" },
 ] as const;
 
+type QueueStats = NonNullable<Awaited<ReturnType<typeof api.reviewQueue>>["stats"]>;
+
 export default function Review() {
   const { libId } = useParams();
   const navigate = useNavigate();
@@ -23,16 +25,26 @@ export default function Review() {
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [round, setRound] = useState(1);
+  const [stats, setStats] = useState<QueueStats | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
+
+  const load = useCallback((lib: string, forceNew: boolean) => {
+    setLoading(true);
+    api.reviewQueue(lib, forceNew).then((res) => {
+      setQueue(res.items);
+      setStats(res.stats);
+      setLoading(false);
+      setIdx(0);
+      setFlipped(false);
+      if (res.items.length === 0) setDone(true);
+      else setDone(false);
+    });
+  }, []);
 
   useEffect(() => {
     if (!libId) return;
-    api.reviewQueue(libId).then((res) => {
-      setQueue(res.items);
-      setLoading(false);
-      if (res.items.length === 0) setDone(true);
-    });
-  }, [libId]);
+    load(libId, false);
+  }, [libId, load]);
 
   const card = queue[idx];
 
@@ -99,48 +111,80 @@ export default function Review() {
   }
 
   if (done) {
-    // 进入时队列就为空：确实没有到期卡，只提供返回。
-    if (queue.length === 0) {
+    // 队列空但还有新卡：多半是每日新卡配额用完——说明原因并提供加量入口。
+    const blockedByLimit =
+      !!stats && stats.new_remaining > 0 && stats.daily_new_used >= stats.daily_new_max;
+
+    // 本轮复习完（队列非空但全部过完）：想再来几轮随意，不设硬限制。
+    if (queue.length > 0) {
       return (
         <div className="mx-auto max-w-lg px-6 pt-28 text-center">
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-seal font-display text-3xl text-[#f8f3e7]">
             磐
           </div>
-          <h2 className="font-display text-2xl font-bold">暂无到期卡片</h2>
-          <p className="mt-2 text-sm text-ink-soft">该记的今天先到这儿，明天再来滚石头。</p>
-          <Link
-            to={`/library/${libId}`}
-            className="mt-8 inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
-          >
-            返回知识库
-          </Link>
+          <h2 className="font-display text-2xl font-bold">第 {round} 轮复习完成</h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            这轮过了 {queue.length} 张。滚动的石头不长苔藓，想再磨一遍也行。
+          </p>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <button
+              onClick={nextRound}
+              className="rounded-md bg-ink px-5 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
+            >
+              再来一轮
+            </button>
+            <Link
+              to={`/library/${libId}`}
+              className="inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
+            >
+              返回知识库
+            </Link>
+          </div>
         </div>
       );
     }
-    // 本轮复习完：想再来几轮随意，不设硬限制。
+
     return (
       <div className="mx-auto max-w-lg px-6 pt-28 text-center">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-seal font-display text-3xl text-[#f8f3e7]">
           磐
         </div>
-        <h2 className="font-display text-2xl font-bold">第 {round} 轮复习完成</h2>
-        <p className="mt-2 text-sm text-ink-soft">
-          这轮过了 {queue.length} 张。滚动的石头不长苔藓，想再磨一遍也行。
-        </p>
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <button
-            onClick={nextRound}
-            className="rounded-md bg-ink px-5 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
-          >
-            再来一轮
-          </button>
-          <Link
-            to={`/library/${libId}`}
-            className="inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
-          >
-            返回知识库
-          </Link>
-        </div>
+        {blockedByLimit ? (
+          <>
+            <h2 className="font-display text-2xl font-bold">今日新卡配额已用完</h2>
+            <p className="mt-2 text-sm leading-6 text-ink-soft">
+              今日已学 {stats!.daily_new_used} 张新卡（上限 {stats!.daily_new_max}），
+              还有 {stats!.new_remaining} 张新卡待学。
+              <br />
+              想继续学不受限，随时可以加量。
+            </p>
+            <div className="mt-8 flex items-center justify-center gap-3">
+              <button
+                onClick={() => libId && load(libId, true)}
+                className="rounded-md bg-ink px-5 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
+              >
+                继续学新卡（无视上限）
+              </button>
+              <Link
+                to={`/library/${libId}`}
+                className="inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
+              >
+                返回知识库
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="font-display text-2xl font-bold">暂无到期卡片</h2>
+            <p className="mt-2 text-sm text-ink-soft">该记的今天先到这儿，明天再来滚石头。</p>
+            <Link
+              to={`/library/${libId}`}
+              className="mt-8 inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
+            >
+              返回知识库
+            </Link>
+          </>
+        )}
       </div>
     );
   }

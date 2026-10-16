@@ -30,27 +30,44 @@ type QueueItem struct {
 	Due   string `json:"due"`
 }
 
+// QueueStats 队列统计：让前端能解释"为什么没卡可复习"。
+type QueueStats struct {
+	DueCount     int `json:"due_count"`      // 当前到期卡数
+	NewRemaining int `json:"new_remaining"`  // 尚未引入的新卡总数（含被日限挡住的）
+	DailyNewUsed int `json:"daily_new_used"` // 今日已引入的新卡数
+	DailyNewMax  int `json:"daily_new_max"`  // 每日新卡上限
+}
+
 // Queue 组装今日复习队列，并为入选的新卡打上 introduced_date（每日上限依据）。
-func (s *ReviewService) Queue(ctx context.Context, libraryID string) ([]QueueItem, error) {
+// forceNew 为 true 时无视每日新卡上限（用户主动加量）。
+func (s *ReviewService) Queue(ctx context.Context, libraryID string, forceNew bool) ([]QueueItem, *QueueStats, error) {
 	dueCards, dueScheds, err := s.store.ListDueCards(ctx, libraryID, time.Now())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	newCards, newScheds, err := s.store.ListNewCards(ctx, libraryID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	today := time.Now().Format("2006-01-02")
 	used, err := s.store.CountNewIntroducedOn(ctx, today)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	maxNew := s.settings.IntValue(ctx, KeyDailyNew, 20)
+
+	stats := &QueueStats{
+		DueCount:     len(dueCards),
+		NewRemaining: len(newCards),
+		DailyNewUsed: used,
+		DailyNewMax:  maxNew,
+	}
 
 	queue := scheduler.BuildQueue(scheduler.QueueInput{
 		DueCards: dueCards, DueScheds: dueScheds,
 		NewCards: newCards, NewScheds: newScheds,
 		DailyNewUsed: used, DailyNewMax: maxNew,
+		ForceNew: forceNew,
 	})
 
 	// 新卡入选即记 introduced_date（幂等：已记过的不再覆盖）。
@@ -66,7 +83,7 @@ func (s *ReviewService) Queue(ctx context.Context, libraryID string) ([]QueueIte
 		if ns := newIDToSched[c.ID]; ns != nil && ns.IntroducedDate == "" {
 			ns.IntroducedDate = today
 			if err := s.store.UpsertSchedule(ctx, ns); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
@@ -88,7 +105,7 @@ func (s *ReviewService) Queue(ctx context.Context, libraryID string) ([]QueueIte
 			Due: time.Now().Format(time.RFC3339),
 		})
 	}
-	return items, nil
+	return items, stats, nil
 }
 
 // SubmitReview 提交一次自评（rating 1–4），FSRS 计算下次复习时间并落库。
