@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, Chunk, PreviewCard } from "../api/client";
 import Markdown from "../components/Markdown";
 
 // 文档详情：chunk 按父块分组 → 勾选小节（支持全局/分组全选）→ 卡片预览勾选 → 入库。
 // 勾选只认复选框本身（一处控件），行与标题不再整行可点。
+// 入库成功后直接跳回知识库首页（flash 提示入库数量），不再停留本页。
 export default function DocumentDetail() {
   const { docId } = useParams();
+  const navigate = useNavigate();
   const [doc, setDoc] = useState<{ id: string; title: string; format: string; library_id: string } | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -14,7 +16,6 @@ export default function DocumentDetail() {
   const [previews, setPreviews] = useState<PreviewCard[]>([]);
   const [chosen, setChosen] = useState<Set<number>>(new Set());
   const [errors, setErrors] = useState<string[]>([]);
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!docId) return;
@@ -51,7 +52,6 @@ export default function DocumentDetail() {
     if (!doc?.library_id || selected.size === 0) return;
     setPreviewing(true);
     setErrors([]);
-    setMessage("");
     try {
       const res = await api.previewCards(doc.library_id, [...selected]);
       setPreviews(res.cards);
@@ -71,9 +71,9 @@ export default function DocumentDetail() {
       front: p.front, back: p.back, source_chunk_id: p.source_chunk_id,
     }));
     const res = await api.commitCards(doc.library_id, cards);
-    setMessage(`已入库 ${res.count} 张卡片，可到「开始复习」中见到它们。`);
-    setPreviews([]);
-    setSelected(new Set());
+    navigate(`/library/${doc.library_id}`, {
+      state: { flash: `已入库 ${res.count} 张卡片，到「开始复习」中见到它们。` },
+    });
   };
 
   return (
@@ -143,7 +143,6 @@ export default function DocumentDetail() {
                 "生成卡片预览"
               )}
             </button>
-            {message && <span className="text-sm text-[#5a6f4e]">{message}</span>}
           </div>
         </>
       )}

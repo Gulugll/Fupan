@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, QueueItem, SourceInfo } from "../api/client";
 import Markdown from "../components/Markdown";
 
@@ -14,6 +14,7 @@ const RATINGS = [
 
 export default function Review() {
   const { libId } = useParams();
+  const navigate = useNavigate();
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -21,6 +22,7 @@ export default function Review() {
   const [showSource, setShowSource] = useState(false);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   useEffect(() => {
     if (!libId) return;
@@ -60,6 +62,10 @@ export default function Review() {
   // 键盘：空格翻卡，1–4 评分，Esc 关溯源弹层。
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (confirmExit) {
+        if (e.key === "Escape") setConfirmExit(false);
+        return;
+      }
       if (showSource) {
         if (e.key === "Escape") setShowSource(false);
         return;
@@ -75,7 +81,7 @@ export default function Review() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [flipped, showSource, flip, rate]);
+  }, [flipped, showSource, confirmExit, flip, rate]);
 
   if (loading) {
     return <div className="p-16 text-center text-sm text-faint">正在取队列……</div>;
@@ -109,7 +115,15 @@ export default function Review() {
           <span>
             {card?.is_new ? "新卡" : "复习"} · 第 {idx + 1} 张 / 共 {queue.length} 张
           </span>
-          <span>空格翻卡，1–4 评分</span>
+          <span className="flex items-center gap-3">
+            <span>空格翻卡，1–4 评分</span>
+            <button
+              onClick={() => setConfirmExit(true)}
+              className="rounded-md border border-line px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink"
+            >
+              退出复习
+            </button>
+          </span>
         </div>
         <div className="relative h-1 rounded-full bg-line">
           <div
@@ -216,6 +230,40 @@ export default function Review() {
           </div>
         )}
       </div>
+
+      {/* 中途退出确认：评分已即时落库，进度不会丢 */}
+      {confirmExit && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 p-4"
+          onClick={() => setConfirmExit(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-line bg-card p-6 text-center paper-shadow"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-bold">确定退出复习？</h3>
+            <p className="mt-2 text-sm leading-6 text-ink-soft">
+              已复习 <span className="text-ink">{idx}</span> 张（评分已保存）
+              <br />
+              剩余 <span className="text-ink">{queue.length - idx}</span> 张仍是到期状态，下次「开始复习」接着来。
+            </p>
+            <div className="mt-5 flex gap-2.5">
+              <button
+                onClick={() => setConfirmExit(false)}
+                className="flex-1 rounded-lg border border-line py-2 text-sm text-ink transition-colors hover:border-ink-soft"
+              >
+                继续复习
+              </button>
+              <button
+                onClick={() => navigate(`/library/${libId}`)}
+                className="flex-1 rounded-lg bg-ink py-2 text-sm text-paper transition-colors hover:bg-ink/85"
+              >
+                退出并保存进度
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

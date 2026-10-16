@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, DocumentSummary } from "../api/client";
 
 // 库详情：文档列表 + 上传 MD/TXT（拖拽或点选）。
 export default function LibraryDetail() {
   const { libId } = useParams();
+  const location = useLocation();
+  // 一次性 flash 提示（如从文档页入库卡片后跳转过来），读过即清。
+  const [flash, setFlash] = useState<string>(
+    (location.state as { flash?: string } | null)?.flash ?? ""
+  );
   const [docs, setDocs] = useState<DocumentSummary[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -16,6 +21,11 @@ export default function LibraryDetail() {
     libId && api.listDocuments(libId).then(setDocs).catch((e) => setError(e.message));
   useEffect(() => {
     load();
+    // flash 只显示一次：清掉 history state，刷新/前进后退不再重现。
+    if ((location.state as { flash?: string } | null)?.flash) {
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [libId]);
 
   const upload = async (file: File) => {
@@ -36,7 +46,14 @@ export default function LibraryDetail() {
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-display text-2xl font-bold">文档</h2>
+        <h2 className="font-display text-2xl font-bold">
+          文档
+          {flash && (
+            <span className="ml-3 rounded-md bg-[#5a6f4e]/10 px-2.5 py-1 align-middle text-xs font-normal text-[#5a6f4e]">
+              {flash}
+            </span>
+          )}
+        </h2>
         {libId && (
           <Link
             to={`/review/${libId}`}
