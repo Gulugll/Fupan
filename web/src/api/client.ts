@@ -66,7 +66,7 @@ async function handle<T>(resp: Response): Promise<T> {
 
 export const api = {
   listLibraries: () =>
-    fetch("/api/libraries").then(handle<Library[]>),
+    fetch("/api/libraries").then(handle<Library[]>).then((r) => r ?? []),
   createLibrary: (name: string, description: string) =>
     fetch("/api/libraries", {
       method: "POST",
@@ -77,7 +77,7 @@ export const api = {
     fetch(`/api/libraries/${id}`, { method: "DELETE" }).then(handle<void>),
 
   listDocuments: (libId: string) =>
-    fetch(`/api/libraries/${libId}/documents`).then(handle<DocumentSummary[]>),
+    fetch(`/api/libraries/${libId}/documents`).then(handle<DocumentSummary[]>).then((r) => r ?? []),
   uploadDocument: (libId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
@@ -87,7 +87,9 @@ export const api = {
     }).then(handle<{ id: string; title: string; chunk_count: number }>);
   },
   getDocument: (docId: string) =>
-    fetch(`/api/documents/${docId}`).then(handle<{ document: { id: string; title: string; format: string; library_id: string }; chunks: Chunk[] }>),
+    fetch(`/api/documents/${docId}`)
+      .then(handle<{ document: { id: string; title: string; format: string; library_id: string }; chunks: Chunk[] }>)
+      .then((r) => ({ ...r, chunks: r.chunks ?? [] })),
   deleteDocument: (docId: string) =>
     fetch(`/api/documents/${docId}`, { method: "DELETE" }).then(handle<void>),
 
@@ -96,7 +98,10 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ library_id: libraryId, chunk_ids: chunkIds }),
-    }).then(handle<{ cards: PreviewCard[]; errors: string[] }>),
+    })
+      .then(handle<{ cards: PreviewCard[]; errors: string[] }>)
+      // Go 空切片会序列化成 null，统一兜底成数组，避免下游 .length/.map 崩溃。
+      .then((r) => ({ cards: r.cards ?? [], errors: r.errors ?? [] })),
   commitCards: (libraryId: string, cards: { front: string; back: string; source_chunk_id: string }[]) =>
     fetch("/api/cardgen/commit", {
       method: "POST",
@@ -105,7 +110,9 @@ export const api = {
     }).then(handle<{ count: number; cards: unknown[] }>),
 
   reviewQueue: (libId: string) =>
-    fetch(`/api/libraries/${libId}/review/queue`).then(handle<{ items: QueueItem[] }>),
+    fetch(`/api/libraries/${libId}/review/queue`)
+      .then(handle<{ items: QueueItem[] }>)
+      .then((r) => ({ items: r.items ?? [] })),
   reviewCard: (cardId: string, rating: number) =>
     fetch(`/api/cards/${cardId}/review`, {
       method: "POST",

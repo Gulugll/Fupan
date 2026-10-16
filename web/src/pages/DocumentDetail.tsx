@@ -41,18 +41,6 @@ export default function DocumentDetail() {
     });
   };
 
-  const groupSelectedCount = (g: { items: Chunk[] }) =>
-    g.items.filter((c) => selected.has(c.id)).length;
-
-  const toggleGroup = (g: { items: Chunk[] }) => {
-    const all = groupSelectedCount(g) === g.items.length;
-    setSelected((s) => {
-      const n = new Set(s);
-      g.items.forEach((c) => (all ? n.delete(c.id) : n.add(c.id)));
-      return n;
-    });
-  };
-
   // 全局全选/清空（覆盖所有小节）。
   const toggleAll = () => {
     setSelected((s) => (s.size === children.length ? new Set() : new Set(children.map((c) => c.id))));
@@ -106,21 +94,13 @@ export default function DocumentDetail() {
         </button>
       </p>
 
-      {/* chunk 分组：组头复选框控制本组，小节行只认自己的复选框 */}
+      {/* chunk 分组：组头仅作标题与进度展示，勾选只在小节行（一处控件） */}
       <div className="space-y-4">
         {groups.map((g) => {
-          const count = groupSelectedCount(g);
-          const all = g.items.length > 0 && count === g.items.length;
+          const count = g.items.filter((c) => selected.has(c.id)).length;
           return (
             <section key={g.parent.id} className="overflow-hidden rounded-xl border border-line bg-card paper-shadow">
               <div className="flex items-center gap-3 border-b border-line bg-[#faf7f0] px-4 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={all}
-                  onChange={() => toggleGroup(g)}
-                  title="全选本组小节"
-                  className="accent-seal"
-                />
                 <span className="min-w-0 flex-1 truncate font-display text-sm font-medium">
                   {g.parent.title_path || "（无标题路径）"}
                 </span>
