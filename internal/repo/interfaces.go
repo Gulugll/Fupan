@@ -52,6 +52,12 @@ type Store interface {
 	ListDueCards(ctx context.Context, libraryID string, now time.Time) ([]domain.Card, []domain.Schedule, error)
 	// ListNewCards 返回某库中尚未进入调度（state=new）的卡片。
 	ListNewCards(ctx context.Context, libraryID string) ([]domain.Card, []domain.Schedule, error)
+	// CountReviewsOn 统计某库在 [dayStart, dayEnd) 区间内的复习次数。
+	CountReviewsOn(ctx context.Context, libraryID string, dayStart, dayEnd time.Time) (int, error)
+	// DueDayHistogram 按天统计某库非新卡的到期数（due ∈ [from, to]，key 为 YYYY-MM-DD）。
+	DueDayHistogram(ctx context.Context, libraryID string, from, to time.Time) (map[string]int, error)
+	// CountCardsByState 按调度状态统计某库卡片数。
+	CountCardsByState(ctx context.Context, libraryID string) (map[string]int, error)
 	InsertReviewLog(ctx context.Context, log *domain.ReviewLog) error
 
 	// --- Settings ---

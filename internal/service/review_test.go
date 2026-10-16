@@ -153,3 +153,56 @@ func TestSourceInfo(t *testing.T) {
 		t.Fatalf("缺原文: %+v", info)
 	}
 }
+
+func TestStats(t *testing.T) {
+	d, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	store := d.Store()
+	settings := NewSettingsService(store, newTestConfig())
+	libID := seedCardsForReview(t, store, 4) // 4 张新卡
+	ctx := context.Background()
+	svc := NewReviewService(store, settings)
+
+	// 复习 1 张（新→review），引入计数 +1，复习日志 +1。
+	if _, err := svc.SubmitReview(ctx, "A", 3); err != nil {
+		t.Fatal(err)
+	}
+	// 把 B 的 due 调到明天，C 调到后天。
+	inTwoDays := time.Now().AddDate(0, 0, 2)
+	if err := store.UpsertSchedule(ctx, &domain.Schedule{CardID: "B", State: domain.StateReview, Due: time.Now().AddDate(0, 0, 1), Reps: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpsertSchedule(ctx, &domain.Schedule{CardID: "C", State: domain.StateReview, Due: inTwoDays, Reps: 1}); err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := svc.Stats(ctx, libID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.TotalCards != 4 {
+		t.Fatalf("total_cards = %d, 期望 4", st.TotalCards)
+	}
+	if st.StateCounts["review"] != 2 || st.StateCounts["new"] != 1 || st.StateCounts["learning"] != 1 {
+		t.Fatalf("state_counts 不对: %+v", st.StateCounts)
+	}
+	if st.TodayReviews != 1 {
+		t.Fatalf("today_reviews = %d, 期望 1", st.TodayReviews)
+	}
+	if st.TodayNew != 1 {
+		t.Fatalf("today_new = %d, 期望 1", st.TodayNew)
+	}
+	if st.DueNow != 0 {
+		t.Fatalf("due_now = %d, 期望 0（A 刚复习过未到期）", st.DueNow)
+	}
+	// forecast：7 天桶，今天 0、明天 1（B）、后天 1（C）。
+	if len(st.Forecast) != 7 {
+		t.Fatalf("forecast 天数 = %d, 期望 7", len(st.Forecast))
+	}
+	if st.Forecast[1].Count != 1 || st.Forecast[2].Count != 1 {
+		t.Fatalf("forecast 前 3 天 = %v, 期望 [x,1,1,...]", st.Forecast[:3])
+	}
+}

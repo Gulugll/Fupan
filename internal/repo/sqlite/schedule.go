@@ -87,6 +87,61 @@ func (s *store) listCardsBySched(ctx context.Context, libraryID, extra string, a
 	return cards, scheds, rows.Err()
 }
 
+func (s *store) CountReviewsOn(ctx context.Context, libraryID string, dayStart, dayEnd time.Time) (int, error) {
+	var n int
+	err := s.q.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM review_logs r JOIN cards c ON c.id = r.card_id
+		 WHERE c.library_id = ? AND r.reviewed_at >= ? AND r.reviewed_at < ?`,
+		libraryID, dayStart.Format(time.RFC3339), dayEnd.Format(time.RFC3339)).Scan(&n)
+	return n, err
+}
+
+// DueDayHistogram 按天统计非新卡到期数。due 以 RFC3339 文本存储，
+// 统一时区下 substr(due,1,10) 即本地日期。
+func (s *store) DueDayHistogram(ctx context.Context, libraryID string, from, to time.Time) (map[string]int, error) {
+	rows, err := s.q.QueryContext(ctx,
+		`SELECT substr(s.due, 1, 10) AS d, COUNT(*)
+		 FROM cards c JOIN schedules s ON s.card_id = c.id
+		 WHERE c.library_id = ? AND c.status = 'active' AND s.state != 'new'
+		   AND s.due >= ? AND s.due < ?
+		 GROUP BY d`,
+		libraryID, from.Format(time.RFC3339), to.Format(time.RFC3339))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var day string
+		var n int
+		if err := rows.Scan(&day, &n); err != nil {
+			return nil, err
+		}
+		out[day] = n
+	}
+	return out, rows.Err()
+}
+
+func (s *store) CountCardsByState(ctx context.Context, libraryID string) (map[string]int, error) {
+	rows, err := s.q.QueryContext(ctx,
+		`SELECT s.state, COUNT(*) FROM cards c JOIN schedules s ON s.card_id = c.id
+		 WHERE c.library_id = ? AND c.status = 'active' GROUP BY s.state`, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var state string
+		var n int
+		if err := rows.Scan(&state, &n); err != nil {
+			return nil, err
+		}
+		out[state] = n
+	}
+	return out, rows.Err()
+}
+
 func (s *store) InsertReviewLog(ctx context.Context, log *domain.ReviewLog) error {
 	_, err := s.q.ExecContext(ctx,
 		`INSERT INTO review_logs(id, card_id, rating, reviewed_at) VALUES(?,?,?,?)`,

@@ -56,6 +56,7 @@ func registerRoutes(r *gin.Engine, app *App) {
 
 	// 复习闭环（阶段 6）。
 	api.GET("/libraries/:libId/review/queue", app.reviewQueue)
+	api.GET("/libraries/:libId/review/stats", app.reviewStats)
 	api.POST("/cards/:cardId/review", app.reviewCard)
 	api.GET("/cards/:cardId/source", app.cardSource)
 

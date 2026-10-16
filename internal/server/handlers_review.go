@@ -22,6 +22,16 @@ func (a *App) reviewQueue(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": items, "stats": stats})
 }
 
+// reviewStats 记忆统计：今日进度 + 未来 7 天到期分布 + 状态分布。
+func (a *App) reviewStats(c *gin.Context) {
+	st, err := a.reviewSvc.Stats(c.Request.Context(), c.Param("libId"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, st)
+}
+
 // reviewCard 提交一次自评（rating 1–4）。
 func (a *App) reviewCard(c *gin.Context) {
 	var req reviewReq

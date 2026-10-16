@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, QueueItem, SourceInfo } from "../api/client";
 import Markdown from "../components/Markdown";
+import MemoryStats from "../components/MemoryStats";
 
 // 复习页：实体翻卡（3D）→ 1–4 自评 → 下一张；空格翻卡、1–4 评分。
 // 等级与 FSRS rating 一一对应（设计文档 3 模式 A）。
@@ -118,7 +119,7 @@ export default function Review() {
     // 本轮复习完（队列非空但全部过完）：想再来几轮随意，不设硬限制。
     if (queue.length > 0) {
       return (
-        <div className="mx-auto max-w-lg px-6 pt-28 text-center">
+        <div className="mx-auto max-w-lg px-6 pt-16 text-center">
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-seal font-display text-3xl text-[#f8f3e7]">
             磐
           </div>
@@ -140,6 +141,11 @@ export default function Review() {
               返回知识库
             </Link>
           </div>
+          {libId && (
+            <div className="mt-10 text-left">
+              <MemoryStats libId={libId} />
+            </div>
+          )}
         </div>
       );
     }

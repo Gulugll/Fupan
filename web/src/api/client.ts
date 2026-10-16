@@ -44,6 +44,15 @@ export interface QueueItem {
   due: string;
 }
 
+export interface ReviewStats {
+  total_cards: number;
+  state_counts: Record<string, number>;
+  today_new: number;
+  today_reviews: number;
+  due_now: number;
+  forecast: { date: string; count: number }[]; // 今日起 7 天，逾期计入今天
+}
+
 export interface SourceInfo {
   doc_id: string;
   doc_title: string;
@@ -129,6 +138,9 @@ export const api = {
     }).then(handle<{ schedule: { state: string; due: string } }>),
   cardSource: (cardId: string) =>
     fetch(`/api/cards/${cardId}/source`).then(handle<SourceInfo>),
+
+  reviewStats: (libId: string) =>
+    fetch(`/api/libraries/${libId}/review/stats`).then(handle<ReviewStats | null>),
 
   getSettings: () => fetch("/api/settings").then(handle<Record<string, string>>),
   testSettings: (target: "chat" | "embed") =>

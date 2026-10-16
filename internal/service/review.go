@@ -125,6 +125,10 @@ func (s *ReviewService) SubmitReview(ctx context.Context, cardID string, rating 
 	if err != nil {
 		return nil, err
 	}
+	// 新卡被直接评分也算今日引入（与队列引入计数幂等互补）。
+	if cur.State == domain.StateNew && cur.IntroducedDate == "" {
+		next.IntroducedDate = time.Now().Format("2006-01-02")
+	}
 	err = s.store.Tx(ctx, func(ts repo.Store) error {
 		if err := ts.UpsertSchedule(ctx, next); err != nil {
 			return err
@@ -140,6 +144,80 @@ func (s *ReviewService) SubmitReview(ctx context.Context, cardID string, rating 
 		return nil, err
 	}
 	return next, nil
+}
+
+// DayDue 未来某天的到期卡数。
+type DayDue struct {
+	Date  string `json:"date"` // YYYY-MM-DD
+	Count int    `json:"count"`
+}
+
+// LibStats 知识库记忆统计：今日学了什么、明天与未来一周要复习什么、卡片记忆状态分布。
+type LibStats struct {
+	TotalCards   int            `json:"total_cards"`
+	StateCounts  map[string]int `json:"state_counts"` // new/learning/review/relearning → 张数
+	TodayNew     int            `json:"today_new"`     // 今日引入的新卡数
+	TodayReviews int            `json:"today_reviews"` // 今日复习次数
+	DueNow       int            `json:"due_now"`       // 当前到期（含逾期，不含新卡）
+	Forecast     []DayDue       `json:"forecast"`      // 今日起 7 天到期分布（逾期计入今天）
+}
+
+// Stats 汇总某库的记忆数据，供记忆曲线 / 每日进度展示。
+func (s *ReviewService) Stats(ctx context.Context, libraryID string) (*LibStats, error) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	horizon := today.AddDate(0, 0, 7) // 7 天桶：[今天00:00, 7天后00:00)
+
+	stateCounts, err := s.store.CountCardsByState(ctx, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	total := 0
+	for _, n := range stateCounts {
+		total += n
+	}
+
+	todayNew, err := s.store.CountNewIntroducedOn(ctx, now.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	todayReviews, err := s.store.CountReviewsOn(ctx, libraryID, today, today.AddDate(0, 0, 1))
+	if err != nil {
+		return nil, err
+	}
+
+	// 当前到期（含逾期）：直接复用队列的到期查询。
+	dueCards, dueScheds, err := s.store.ListDueCards(ctx, libraryID, now)
+	if err != nil {
+		return nil, err
+	}
+
+	// 7 日到期分布：[today, today+7d) 按天分桶；逾期（due<今天）计入今天。
+	hist, err := s.store.DueDayHistogram(ctx, libraryID, today, horizon)
+	if err != nil {
+		return nil, err
+	}
+	forecast := make([]DayDue, 7)
+	for i := range forecast {
+		day := today.AddDate(0, 0, i)
+		forecast[i] = DayDue{Date: day.Format("2006-01-02"), Count: hist[day.Format("2006-01-02")]}
+	}
+	overdue := 0
+	for _, sc := range dueScheds {
+		if sc.Due.Before(today) {
+			overdue++
+		}
+	}
+	forecast[0].Count += overdue
+
+	return &LibStats{
+		TotalCards:   total,
+		StateCounts:  stateCounts,
+		TodayNew:     todayNew,
+		TodayReviews: todayReviews,
+		DueNow:       len(dueCards),
+		Forecast:     forecast,
+	}, nil
 }
 
 // SourceInfo 卡片溯源信息。

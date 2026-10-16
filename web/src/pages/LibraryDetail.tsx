@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, DocumentSummary } from "../api/client";
+import MemoryStats from "../components/MemoryStats";
 
 // 库详情：文档列表 + 上传 MD/TXT（拖拽或点选）。
 export default function LibraryDetail() {
@@ -63,6 +64,9 @@ export default function LibraryDetail() {
           </Link>
         )}
       </div>
+
+      {/* 记忆统计：今日进度 + 7 日到期分布 + 状态分布 */}
+      {libId && <MemoryStats libId={libId} />}
 
       {/* 上传区 */}
       <div
