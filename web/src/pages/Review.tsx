@@ -22,6 +22,7 @@ export default function Review() {
   const [showSource, setShowSource] = useState(false);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
+  const [round, setRound] = useState(1);
   const [confirmExit, setConfirmExit] = useState(false);
 
   useEffect(() => {
@@ -59,6 +60,16 @@ export default function Review() {
     }
   }, [card, idx, queue.length]);
 
+  // 再来一轮：同一批卡重头过，评分照常落库（FSRS 支持提前复习，会继续推进调度）。
+  const nextRound = () => {
+    setRound((r) => r + 1);
+    setIdx(0);
+    setFlipped(false);
+    setShowSource(false);
+    setSource(null);
+    setDone(false);
+  };
+
   // 键盘：空格翻卡，1–4 评分，Esc 关溯源弹层。
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -88,19 +99,48 @@ export default function Review() {
   }
 
   if (done) {
+    // 进入时队列就为空：确实没有到期卡，只提供返回。
+    if (queue.length === 0) {
+      return (
+        <div className="mx-auto max-w-lg px-6 pt-28 text-center">
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-seal font-display text-3xl text-[#f8f3e7]">
+            磐
+          </div>
+          <h2 className="font-display text-2xl font-bold">暂无到期卡片</h2>
+          <p className="mt-2 text-sm text-ink-soft">该记的今天先到这儿，明天再来滚石头。</p>
+          <Link
+            to={`/library/${libId}`}
+            className="mt-8 inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
+          >
+            返回知识库
+          </Link>
+        </div>
+      );
+    }
+    // 本轮复习完：想再来几轮随意，不设硬限制。
     return (
       <div className="mx-auto max-w-lg px-6 pt-28 text-center">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-seal font-display text-3xl text-[#f8f3e7]">
           磐
         </div>
-        <h2 className="font-display text-2xl font-bold">今日复习完成</h2>
-        <p className="mt-2 text-sm text-ink-soft">滚动的石头不长苔藓，明天记得再来。</p>
-        <Link
-          to={`/library/${libId}`}
-          className="mt-8 inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
-        >
-          返回知识库
-        </Link>
+        <h2 className="font-display text-2xl font-bold">第 {round} 轮复习完成</h2>
+        <p className="mt-2 text-sm text-ink-soft">
+          这轮过了 {queue.length} 张。滚动的石头不长苔藓，想再磨一遍也行。
+        </p>
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <button
+            onClick={nextRound}
+            className="rounded-md bg-ink px-5 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
+          >
+            再来一轮
+          </button>
+          <Link
+            to={`/library/${libId}`}
+            className="inline-block rounded-md border border-line bg-card px-5 py-2 text-sm text-ink transition-colors hover:border-ink-soft paper-shadow"
+          >
+            返回知识库
+          </Link>
+        </div>
       </div>
     );
   }
@@ -114,6 +154,7 @@ export default function Review() {
         <div className="mb-1.5 flex items-center justify-between text-xs text-faint">
           <span>
             {card?.is_new ? "新卡" : "复习"} · 第 {idx + 1} 张 / 共 {queue.length} 张
+            {round > 1 && ` · 第 ${round} 轮`}
           </span>
           <span className="flex items-center gap-3">
             <span>空格翻卡，1–4 评分</span>
