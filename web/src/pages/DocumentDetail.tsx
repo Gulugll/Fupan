@@ -57,12 +57,7 @@ export default function DocumentDetail() {
       setPreviews(res.cards);
       setErrors(res.errors);
       setChosen(new Set(res.cards.map((_, i) => i)));
-      if (res.cards.length > 0) {
-        setTimeout(
-          () => document.getElementById("preview-list")?.scrollIntoView({ behavior: "smooth" }),
-          100
-        );
-      }
+      if (res.cards.length > 0) window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: unknown) {
       setErrors([(e as Error).message]);
     } finally {
@@ -84,18 +79,21 @@ export default function DocumentDetail() {
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
       <h2 className="font-display text-2xl font-bold">{doc?.title ?? "…"}</h2>
-      <p className="mt-1 mb-4 text-xs text-faint">
-        {groups.length} 个章节 · {children.length} 个切片 · 勾选小节后生成卡片
-        <button
-          onClick={toggleAll}
-          className="ml-3 rounded-md border border-line px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink"
-        >
-          {allSelected ? "全不选" : "全选小节"}
-        </button>
-      </p>
+      {/* 阶段一：勾选小节 → 生成。生成预览后整块隐藏，切换到卡片确认视图 */}
+      {previews.length === 0 && (
+        <>
+          <p className="mt-1 mb-4 text-xs text-faint">
+            {groups.length} 个章节 · {children.length} 个切片 · 勾选小节后生成卡片
+            <button
+              onClick={toggleAll}
+              className="ml-3 rounded-md border border-line px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-ink-soft hover:text-ink"
+            >
+              {allSelected ? "全不选" : "全选小节"}
+            </button>
+          </p>
 
-      {/* chunk 分组：组头仅作标题与进度展示，勾选只在小节行（一处控件） */}
-      <div className="space-y-4">
+          {/* chunk 分组：组头仅作标题与进度展示，勾选只在小节行（一处控件） */}
+          <div className="space-y-4">
         {groups.map((g) => {
           const count = g.items.filter((c) => selected.has(c.id)).length;
           return (
@@ -126,36 +124,38 @@ export default function DocumentDetail() {
             </section>
           );
         })}
-      </div>
+          </div>
 
-      {/* 底部操作条 */}
-      <div className="sticky bottom-4 mt-6 flex items-center gap-3 rounded-xl border border-line bg-card p-3 paper-shadow">
-        <span className="text-xs text-ink-soft">已选 {selected.size} 个小节</span>
-        <button
-          onClick={genPreview}
-          disabled={selected.size === 0 || previewing}
-          className="rounded-lg bg-ink px-4 py-1.5 text-sm text-paper transition-colors hover:bg-ink/85 disabled:opacity-40"
-        >
-          {previewing ? (
-            <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-paper/40 border-t-paper" />
-              正在生成，通常需要几秒……
-            </span>
-          ) : (
-            "生成卡片预览"
-          )}
-        </button>
-        {message && <span className="text-sm text-[#5a6f4e]">{message}</span>}
-      </div>
+          {/* 底部操作条 */}
+          <div className="sticky bottom-4 mt-6 flex items-center gap-3 rounded-xl border border-line bg-card p-3 paper-shadow">
+            <span className="text-xs text-ink-soft">已选 {selected.size} 个小节</span>
+            <button
+              onClick={genPreview}
+              disabled={selected.size === 0 || previewing}
+              className="rounded-lg bg-ink px-4 py-1.5 text-sm text-paper transition-colors hover:bg-ink/85 disabled:opacity-40"
+            >
+              {previewing ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-paper/40 border-t-paper" />
+                  正在生成，通常需要几秒……
+                </span>
+              ) : (
+                "生成卡片预览"
+              )}
+            </button>
+            {message && <span className="text-sm text-[#5a6f4e]">{message}</span>}
+          </div>
+        </>
+      )}
       {errors.length > 0 && (
         <ul className="mt-3 space-y-1 text-xs text-seal">
           {errors.map((e, i) => <li key={i}>{e}</li>)}
         </ul>
       )}
 
-      {/* 卡片预览：闪卡样式，勾选后入库 */}
+      {/* 阶段二：卡片预览确认 → 入库。此时小节列表已隐藏 */}
       {previews.length > 0 && (
-        <div id="preview-list" className="mt-10 scroll-mt-6">
+        <div id="preview-list" className="mt-6">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-display text-lg font-bold">卡片预览 · {previews.length} 张</h3>
             <div className="flex gap-2 text-xs">
@@ -170,6 +170,12 @@ export default function DocumentDetail() {
                 className="rounded-md border border-line px-2.5 py-1 text-ink-soft hover:border-ink-soft hover:text-ink"
               >
                 清空
+              </button>
+              <button
+                onClick={() => { setPreviews([]); setErrors([]); }}
+                className="rounded-md border border-line px-2.5 py-1 text-ink-soft hover:border-ink-soft hover:text-ink"
+              >
+                返回重新选择
               </button>
             </div>
           </div>
