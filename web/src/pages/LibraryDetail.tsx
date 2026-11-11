@@ -56,12 +56,32 @@ export default function LibraryDetail() {
           )}
         </h2>
         {libId && (
-          <Link
-            to={`/review/${libId}`}
-            className="rounded-lg bg-ink px-4 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
-          >
-            开始复习
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              to={`/library/${libId}/agent`}
+              className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-ink-soft"
+            >
+              Agent 复习
+            </Link>
+            <Link
+              to={`/library/${libId}/quiz`}
+              className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-ink-soft"
+            >
+              随机抽题
+            </Link>
+            <Link
+              to={`/library/${libId}/cards`}
+              className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-ink-soft"
+            >
+              卡片管理
+            </Link>
+            <Link
+              to={`/review/${libId}`}
+              className="rounded-lg bg-ink px-4 py-2 text-sm text-paper transition-colors hover:bg-ink/85"
+            >
+              开始复习
+            </Link>
+          </div>
         )}
       </div>
 

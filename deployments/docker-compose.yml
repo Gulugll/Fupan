@@ -1,6 +1,7 @@
-# 复磐 FuPan 一键部署：fupan + Milvus standalone（内嵌 etcd + 本地存储，单容器拓扑）
-# 用法：docker compose up -d → 浏览器打开 http://localhost:8080
-# 说明：Milvus 使用 embedded etcd + local storage，无需 etcd/minio 容器（minio 镜像国内源受限）。
+# 复磐 FuPan 双模式单应用示例（不包含 Milvus）
+# 默认 standalone：无登录、单用户，适合独立部署。
+# 联合部署：设置 FUPAN_NO_AUTH=false，并填写下方 OIDC 变量。
+# 注意：standalone 无访问控制，公网暴露即允许访客读写数据。
 name: fupan
 
 services:
@@ -12,36 +13,19 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - fupan-data:/data          # SQLite 数据目录（复习进度持久化）
+      - fupan-data:/data
     environment:
-      - FUPAN_MILVUS_ADDR=milvus:19530
-      - FUPAN_DATA_DIR=/data
-    depends_on:
-      milvus:
-        condition: service_healthy
+      FUPAN_NO_AUTH: "${FUPAN_NO_AUTH:-true}"
+      FUPAN_DATA_DIR: /data
+      FUPAN_VECTOR_DISABLED: "1"
+      FUPAN_OIDC_ISSUER: "${FUPAN_OIDC_ISSUER:-}"
+      FUPAN_OIDC_CLIENT_ID: "${FUPAN_OIDC_CLIENT_ID:-}"
+      FUPAN_OIDC_CLIENT_SECRET: "${FUPAN_OIDC_CLIENT_SECRET:-}"
+      FUPAN_REDIRECT_URL: "${FUPAN_REDIRECT_URL:-}"
+      FUPAN_ADMIN_SUB: "${FUPAN_ADMIN_SUB:-}"
+      FUPAN_ALLOWED_SUBS: "${FUPAN_ALLOWED_SUBS:-}"
+      FUPAN_ALLOWED_ENDPOINT_HOSTS: "${FUPAN_ALLOWED_ENDPOINT_HOSTS:-}"
     restart: unless-stopped
-
-  milvus:
-    image: milvusdb/milvus:v2.4.15
-    container_name: fupan-milvus
-    command: ["milvus", "run", "standalone"]
-    environment:
-      ETCD_USE_EMBED: "true"
-      ETCD_DATA_DIR: /var/lib/milvus/etcdData
-      ETCD_CONFIG_PATH: /milvus/configs/embedEtcd.yaml
-      COMMON_STORAGETYPE: local
-    volumes:
-      - milvus-data:/var/lib/milvus
-      - ./embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro
-    ports:
-      - "19530:19530"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 10s
-      timeout: 10s
-      retries: 12
-      start_period: 30s
 
 volumes:
   fupan-data:
-  milvus-data:

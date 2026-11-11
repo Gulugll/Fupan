@@ -1,0 +1,113 @@
+<!-- ============================================================
+  FuPan 复磐 · Casdoor 登录页左侧品牌面板
+  用法：Casdoor 后台 → 应用(fupan) → UI Customization →
+       Form position 选「Enable side panel」→
+       Side panel HTML 粘贴本文件全部内容（含 <style>，允许）
+  预览里的浮动卡片为纯 CSS 动效，无需 JS/图片资源。
+============================================================ -->
+<style>
+.fp-side {
+  position: absolute; inset: 0; overflow: hidden;
+  background: linear-gradient(150deg, #101A33 0%, #1B2A4A 45%, #2B4C9B 100%);
+  color: #F7F6F1;
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+.fp-side::before {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 30% 20%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 30% 20%, black 30%, transparent 75%);
+}
+.fp-side::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(600px 400px at 80% 0%, rgba(94,130,210,0.28), transparent 65%);
+}
+.fp-side-inner {
+  position: relative; z-index: 1; height: 100%;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 56px 60px 40px;
+}
+.fp-brand { display: flex; align-items: center; gap: 14px; }
+.fp-seal {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.22);
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Songti SC", "Noto Serif SC", STSong, serif;
+  font-size: 27px; font-weight: 700; color: #fff;
+}
+.fp-wordmark {
+  font-family: "Songti SC", "Noto Serif SC", STSong, serif;
+  font-size: 30px; font-weight: 900; letter-spacing: 0.1em; color: #fff;
+}
+.fp-wordmark .en {
+  font-style: italic; font-size: 17px; font-weight: 400;
+  color: #9FB4E8; margin-left: 6px;
+}
+.fp-hero { margin-top: 40px; }
+.fp-hero h2 {
+  font-family: "Songti SC", "Noto Serif SC", STSong, serif;
+  font-size: 38px; font-weight: 900; line-height: 1.5;
+  letter-spacing: 0.06em; color: #fff; margin: 0;
+}
+.fp-hero h2 .hl { color: #A9C0FF; }
+.fp-hero p { margin-top: 18px; font-size: 15px; line-height: 2; color: #B9C6E4; max-width: 26em; }
+.fp-cards { position: relative; height: 200px; margin-top: 44px; }
+.fp-card {
+  position: absolute; width: 250px; padding: 18px 20px;
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 16px 40px rgba(6,12,30,0.35);
+  animation: fp-float 6s ease-in-out infinite;
+}
+.fp-card .q { font-size: 13px; color: #E4EAFB; line-height: 1.8; }
+.fp-card .a { font-size: 12px; color: #93A6D4; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); }
+.fp-card .tag { display: inline-block; font-size: 11px; letter-spacing: 0.15em; color: #A9C0FF; margin-bottom: 8px; }
+.fp-card.c1 { left: 0; top: 0; transform: rotate(-4deg); }
+.fp-card.c2 { left: 190px; top: 56px; transform: rotate(3deg); animation-delay: -3s; }
+.fp-card.c3 { left: 60px; top: 108px; transform: rotate(-1deg); animation-delay: -1.5s; opacity: 0.85; }
+@keyframes fp-float { 0%,100% { margin-top: 0; } 50% { margin-top: -12px; } }
+.fp-features { display: flex; gap: 34px; margin-top: 40px; flex-wrap: wrap; }
+.fp-features .f { font-size: 13px; color: #B9C6E4; }
+.fp-features .f b { display: block; font-size: 15px; color: #fff; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.05em; }
+.fp-foot { font-size: 12px; color: #7C8FB8; letter-spacing: 0.1em; }
+@media (prefers-reduced-motion: reduce) { .fp-card { animation: none; } }
+</style>
+
+<div class="fp-side">
+  <div class="fp-side-inner">
+    <div>
+      <div class="fp-brand">
+        <div class="fp-seal">磐</div>
+        <div class="fp-wordmark">复磐<span class="en">FuPan</span></div>
+      </div>
+      <div class="fp-hero">
+        <h2>把笔记变成<br><span class="hl">记忆的磐石</span></h2>
+        <p>导入你的 Markdown 笔记，AI 自动出卡，FSRS 间隔重复算法安排每一次复习。让写下的每一条知识，都真正留下来。</p>
+      </div>
+      <div class="fp-cards">
+        <div class="fp-card c1">
+          <span class="tag">问 · QUESTION</span>
+          <div class="q">交叉熵通常与哪种函数配合使用？</div>
+        </div>
+        <div class="fp-card c2">
+          <span class="tag">答 · ANSWER</span>
+          <div class="q">Softmax。</div>
+          <div class="a">分类任务中配合 softmax 使用，衡量分布差异。</div>
+        </div>
+        <div class="fp-card c3">
+          <span class="tag">复习 · REVIEW</span>
+          <div class="q">FSRS：按遗忘曲线安排下次复习</div>
+        </div>
+      </div>
+      <div class="fp-features">
+        <div class="f"><b>AI 自动出卡</b>按标题树切片，代码表格不拆散</div>
+        <div class="f"><b>FSRS 间隔重复</b>科学对抗遗忘曲线</div>
+        <div class="f"><b>知识溯源</b>每张卡片回到笔记原文</div>
+      </div>
+    </div>
+    <div class="fp-foot">DUX SSO · 统一身份认证 · bg5dux.top</div>
+  </div>
+</div>

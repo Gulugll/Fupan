@@ -38,9 +38,12 @@ type QueueStats struct {
 	DailyNewMax  int `json:"daily_new_max"`  // 每日新卡上限
 }
 
-// Queue 组装今日复习队列，并为入选的新卡打上 introduced_date（每日上限依据）。
-// forceNew 为 true 时无视每日新卡上限（用户主动加量）。
-func (s *ReviewService) Queue(ctx context.Context, libraryID string, forceNew bool) ([]QueueItem, *QueueStats, error) {
+// Queue 组装复习队列，并为入选的新卡打上 introduced_date（每日上限依据）。
+//   - 默认：到期卡优先混新卡，受每日新卡上限约束；
+//   - forceNew：无视每日新卡上限（用户主动加量）；
+//   - all（自由复习）：不看到期与配额，全部 active 卡片按 due 升序进队，
+//     评分照走 FSRS（提前复习即普通复习，调度正常推进）。
+func (s *ReviewService) Queue(ctx context.Context, libraryID string, forceNew, all bool) ([]QueueItem, *QueueStats, error) {
 	dueCards, dueScheds, err := s.store.ListDueCards(ctx, libraryID, time.Now())
 	if err != nil {
 		return nil, nil, err
@@ -63,13 +66,6 @@ func (s *ReviewService) Queue(ctx context.Context, libraryID string, forceNew bo
 		DailyNewMax:  maxNew,
 	}
 
-	queue := scheduler.BuildQueue(scheduler.QueueInput{
-		DueCards: dueCards, DueScheds: dueScheds,
-		NewCards: newCards, NewScheds: newScheds,
-		DailyNewUsed: used, DailyNewMax: maxNew,
-		ForceNew: forceNew,
-	})
-
 	// 新卡入选即记 introduced_date（幂等：已记过的不再覆盖）。
 	newIDToSched := map[string]*domain.Schedule{}
 	for i := range newScheds {
@@ -79,13 +75,44 @@ func (s *ReviewService) Queue(ctx context.Context, libraryID string, forceNew bo
 		_, ok := newIDToSched[id]
 		return ok
 	}
-	for _, c := range queue {
-		if ns := newIDToSched[c.ID]; ns != nil && ns.IntroducedDate == "" {
-			ns.IntroducedDate = today
-			if err := s.store.UpsertSchedule(ctx, ns); err != nil {
-				return nil, nil, err
+
+	var queue []domain.Card
+	var itemDue func(cardID string) time.Time
+	if all {
+		// 自由复习：全部卡片直接进队，不复用配额/混排逻辑。
+		queue, dueScheds, err = s.store.ListAllCards(ctx, libraryID)
+		if err != nil {
+			return nil, nil, err
+		}
+		schedByID := map[string]domain.Schedule{}
+		for _, sc := range dueScheds {
+			schedByID[sc.CardID] = sc
+			if sc.State == domain.StateNew && sc.IntroducedDate == "" {
+				if ns, ok := newIDToSched[sc.CardID]; ok && ns.IntroducedDate == "" {
+					ns.IntroducedDate = today
+					if err := s.store.UpsertSchedule(ctx, ns); err != nil {
+						return nil, nil, err
+					}
+				}
 			}
 		}
+		itemDue = func(cardID string) time.Time { return schedByID[cardID].Due }
+	} else {
+		queue = scheduler.BuildQueue(scheduler.QueueInput{
+			DueCards: dueCards, DueScheds: dueScheds,
+			NewCards: newCards, NewScheds: newScheds,
+			DailyNewUsed: used, DailyNewMax: maxNew,
+			ForceNew: forceNew,
+		})
+		for _, c := range queue {
+			if ns := newIDToSched[c.ID]; ns != nil && ns.IntroducedDate == "" {
+				ns.IntroducedDate = today
+				if err := s.store.UpsertSchedule(ctx, ns); err != nil {
+					return nil, nil, err
+				}
+			}
+		}
+		itemDue = func(string) time.Time { return time.Now() }
 	}
 
 	items := make([]QueueItem, 0, len(queue))
@@ -102,7 +129,7 @@ func (s *ReviewService) Queue(ctx context.Context, libraryID string, forceNew bo
 		items = append(items, QueueItem{
 			ID: c.ID, Front: c.Front, Back: c.Back,
 			State: string(state), IsNew: isNew(c.ID),
-			Due: time.Now().Format(time.RFC3339),
+			Due: itemDue(c.ID).Format(time.RFC3339),
 		})
 	}
 	return items, stats, nil
@@ -154,12 +181,13 @@ type DayDue struct {
 
 // LibStats 知识库记忆统计：今日学了什么、明天与未来一周要复习什么、卡片记忆状态分布。
 type LibStats struct {
-	TotalCards   int            `json:"total_cards"`
-	StateCounts  map[string]int `json:"state_counts"` // new/learning/review/relearning → 张数
-	TodayNew     int            `json:"today_new"`     // 今日引入的新卡数
-	TodayReviews int            `json:"today_reviews"` // 今日复习次数
-	DueNow       int            `json:"due_now"`       // 当前到期（含逾期，不含新卡）
-	Forecast     []DayDue       `json:"forecast"`      // 今日起 7 天到期分布（逾期计入今天）
+	TotalCards   int                `json:"total_cards"`
+	StateCounts  map[string]int     `json:"state_counts"`  // new/learning/review/relearning → 张数
+	TodayNew     int                `json:"today_new"`     // 今日引入的新卡数
+	TodayReviews int                `json:"today_reviews"` // 今日复习次数
+	DueNow       int                `json:"due_now"`       // 当前到期（含逾期，不含新卡）
+	Forecast     []DayDue           `json:"forecast"`      // 今日起 7 天到期分布（逾期计入今天）
+	History      []domain.DayReview `json:"history"`       // 近 30 天复习量与记住数（含空天，遗忘曲线面板数据）
 }
 
 // Stats 汇总某库的记忆数据，供记忆曲线 / 每日进度展示。
@@ -210,6 +238,25 @@ func (s *ReviewService) Stats(ctx context.Context, libraryID string) (*LibStats,
 	}
 	forecast[0].Count += overdue
 
+	// 近 30 天复习历史：空天补零，保证前端曲线连续。
+	dayStats, err := s.store.ReviewDailyHistory(ctx, libraryID, today.AddDate(0, 0, -29))
+	if err != nil {
+		return nil, err
+	}
+	byDay := map[string]domain.DayReview{}
+	for _, dr := range dayStats {
+		byDay[dr.Date] = dr
+	}
+	history := make([]domain.DayReview, 30)
+	for i := range history {
+		day := today.AddDate(0, 0, i-29).Format("2006-01-02")
+		if dr, ok := byDay[day]; ok {
+			history[i] = dr
+		} else {
+			history[i] = domain.DayReview{Date: day}
+		}
+	}
+
 	return &LibStats{
 		TotalCards:   total,
 		StateCounts:  stateCounts,
@@ -217,19 +264,20 @@ func (s *ReviewService) Stats(ctx context.Context, libraryID string) (*LibStats,
 		TodayReviews: todayReviews,
 		DueNow:       len(dueCards),
 		Forecast:     forecast,
+		History:      history,
 	}, nil
 }
 
 // SourceInfo 卡片溯源信息。
 type SourceInfo struct {
-	DocID        string `json:"doc_id"`
-	DocTitle     string `json:"doc_title"`
-	TitlePath    string `json:"title_path"`
-	ParentID     string `json:"parent_id"`
-	ParentText   string `json:"parent_text"`
-	ChildText    string `json:"child_text"`
-	CharStart    int    `json:"char_start"`
-	CharEnd      int    `json:"char_end"`
+	DocID      string `json:"doc_id"`
+	DocTitle   string `json:"doc_title"`
+	TitlePath  string `json:"title_path"`
+	ParentID   string `json:"parent_id"`
+	ParentText string `json:"parent_text"`
+	ChildText  string `json:"child_text"`
+	CharStart  int    `json:"char_start"`
+	CharEnd    int    `json:"char_end"`
 }
 
 // Source 返回卡片溯源：来源文档、标题路径、父块全文、子块定位。

@@ -1,0 +1,117 @@
+/* ============================================================
+   FuPan 复磐 · Casdoor 登录页主题（分屏版：左品牌面板 + 右表单）
+   用法：Casdoor 后台 → 应用(fupan) → UI Customization →
+        Custom CSS 粘贴本文件全部内容（纯 CSS，不要加 <style> 标签）
+   配套设置：
+        主题色 colorPrimary = #2B4C9B
+        圆角 borderRadius   = 10
+        Form position       = Enable side panel
+        Side panel HTML     = 粘贴 casdoor-side-panel.html 全文
+   ============================================================ */
+
+/* ---- 右侧表单区背景：纸面底色 ---- */
+.login-background {
+  background: #F7F6F1;
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+}
+
+/* ---- 表单容器：分屏模式下不要卡片边框，直接落在纸面上 ---- */
+.login-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #5A6070;
+}
+
+/* 表单区标题用宋体 */
+.login-panel h1,
+.login-panel h2,
+.login-panel .login-title {
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC",
+    STSong, serif;
+  color: #22262E;
+  letter-spacing: 0.04em;
+}
+
+/* ---- 登录方式 tab：左对齐下划线式 ---- */
+.signin-methods > div {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  border-bottom: 1px solid #D8D5CC;
+}
+.signin-methods [role="tablist"] {
+  justify-content: flex-start;
+  gap: 28px;
+}
+.signin-methods [role="tab"] {
+  flex: none !important;
+  padding: 0 0 10px !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #5A6070;
+  font-size: 15px !important;
+}
+.signin-methods [role="tab"][data-state="active"] {
+  color: #2B4C9B;
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 #2B4C9B !important;
+}
+
+/* ---- 表单 ---- */
+.login-form label {
+  color: #5A6070;
+  font-size: 13px;
+  font-weight: 400;
+}
+.login-form input:not([type="checkbox"]):not([type="radio"]) {
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid #D8D5CC;
+  border-radius: 8px;
+  background: #FFFFFF;
+  font-size: 15px;
+  color: #22262E;
+  box-shadow: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.login-form input:not([type="checkbox"]):not([type="radio"]):focus {
+  border-color: #2B4C9B;
+  box-shadow: 0 0 0 3px rgba(43, 76, 155, 0.12);
+}
+.login-form input::placeholder {
+  color: #9AA0AE;
+}
+
+/* ---- 主按钮：钢笔靛蓝 ---- */
+.login-form button[type="submit"],
+.login-panel .ant-btn-primary,
+.login-panel button.ant-btn-primary {
+  height: 46px;
+  border: none;
+  border-radius: 8px;
+  background: #2B4C9B;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  box-shadow: 0 2px 8px rgba(43, 76, 155, 0.25);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.login-form button[type="submit"]:hover,
+.login-panel .ant-btn-primary:hover {
+  background: #23407F;
+  box-shadow: 0 4px 14px rgba(43, 76, 155, 0.32);
+}
+
+/* ---- 链接 ---- */
+.login-form a,
+.login-panel a {
+  color: #2B4C9B;
+}
+.login-form a:hover,
+.login-panel a:hover {
+  color: #23407F;
+}

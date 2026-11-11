@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ type fakeVectorStore struct {
 	upserted int
 }
 
+func (f *fakeVectorStore) Enabled() bool { return true }
 func (f *fakeVectorStore) Upsert(ctx context.Context, items []vector.Item) error {
 	if f.failUps {
 		return vector.ErrUnavailable
@@ -39,10 +41,12 @@ func (f *fakeVectorStore) Close() error { return nil }
 
 // 假嵌入：按文本长度生成二维向量，可注入失败。
 type fakeEmbedder struct {
-	fail bool
+	fail  bool
+	calls int
 }
 
 func (f *fakeEmbedder) embed(ctx context.Context, texts []string) ([][]float32, error) {
+	f.calls++
 	if f.fail {
 		return nil, context.DeadlineExceeded
 	}
@@ -179,6 +183,38 @@ func TestImportUnsupportedFormat(t *testing.T) {
 	_ = store.CreateLibrary(context.Background(), &domain.Library{ID: "l1", Name: "t", CreatedAt: time.Now()})
 	if _, _, err := svc.Import(context.Background(), "l1", "t", "pdf", "x"); err == nil {
 		t.Fatal("pdf 应被拒绝（V1.5 才支持）")
+	}
+}
+
+func TestNoopVectorSkipsEmbedding(t *testing.T) {
+	d, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	store := d.Store()
+	embedder := &fakeEmbedder{}
+	svc := NewImportService(store, embedder.embed, vector.NoopStore{})
+	ctx := context.Background()
+	if err := store.CreateLibrary(ctx, &domain.Library{ID: "l1", Name: "t", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := svc.Import(ctx, "l1", "t", "md", mdSample); err != nil {
+		t.Fatal(err)
+	}
+	if embedder.calls != 0 {
+		t.Fatalf("向量禁用时 Embed 调用次数 = %d, 期望 0", embedder.calls)
+	}
+}
+
+func TestDeleteMissingDocumentDoesNotTouchVectors(t *testing.T) {
+	svc, _, vs := newTestImport(t)
+	err := svc.DeleteDocument(context.Background(), "missing")
+	if !errors.Is(err, repo.ErrNotFound) {
+		t.Fatalf("删除不存在文档应返回 ErrNotFound, got %v", err)
+	}
+	if len(vs.deleted) != 0 {
+		t.Fatalf("删除不存在文档不应清理向量: %v", vs.deleted)
 	}
 }
 

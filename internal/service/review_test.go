@@ -23,7 +23,7 @@ func seedCardsForReview(t *testing.T, store repo.Store, n int) string {
 	var cards []domain.Card
 	for i := 0; i < n; i++ {
 		cards = append(cards, domain.Card{
-			ID: string(rune('A'+i)), LibraryID: libID, Front: "f", Back: "b", Type: domain.CardQA,
+			ID: string(rune('A' + i)), LibraryID: libID, Front: "f", Back: "b", Type: domain.CardQA,
 			SourceChunkID: "c1", SourceVersion: 1, Status: "active", CreatedAt: time.Now(),
 		})
 	}
@@ -62,7 +62,7 @@ func TestQueueMarksNewAndRespectsLimit(t *testing.T) {
 	ctx := context.Background()
 	_ = libID
 
-	q1, stats, err := svc.Queue(ctx, libID, false)
+	q1, stats, err := svc.Queue(ctx, libID, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestQueueMarksNewAndRespectsLimit(t *testing.T) {
 		t.Fatalf("统计不对: %+v", stats)
 	}
 	// introduced_date 已记：当天再取队列应为空；仍处 new 状态的卡数不变（含已引入未评的）。
-	q2, stats2, err := svc.Queue(ctx, libID, false)
+	q2, stats2, err := svc.Queue(ctx, libID, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestQueueMarksNewAndRespectsLimit(t *testing.T) {
 		t.Fatalf("剩余新卡 = %d, 期望 10", stats2.NewRemaining)
 	}
 	// 强制模式：无视每日上限，把全部 new 状态卡取出。
-	q3, _, err := svc.Queue(ctx, libID, true)
+	q3, _, err := svc.Queue(ctx, libID, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,5 +204,57 @@ func TestStats(t *testing.T) {
 	}
 	if st.Forecast[1].Count != 1 || st.Forecast[2].Count != 1 {
 		t.Fatalf("forecast 前 3 天 = %v, 期望 [x,1,1,...]", st.Forecast[:3])
+	}
+}
+
+// 自由复习：未到期卡也进队，评分照常推进 FSRS。
+func TestQueueAllModeIncludesNotDue(t *testing.T) {
+	d, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	store := d.Store()
+	settings := NewSettingsService(store, newTestConfig())
+	libID := seedCardsForReview(t, store, 3)
+	ctx := context.Background()
+
+	// A 明天才到期。
+	if err := store.UpsertSchedule(ctx, &domain.Schedule{
+		CardID: "A", State: domain.StateReview, Due: time.Now().AddDate(0, 0, 1), Reps: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// 默认队列：A 不可见。
+	q, _, err := NewReviewService(store, settings).Queue(ctx, libID, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range q {
+		if it.ID == "A" {
+			t.Fatal("默认队列不应包含未到期卡")
+		}
+	}
+
+	// 自由复习：A 进队且状态为 review。
+	qAll, _, err := NewReviewService(store, settings).Queue(ctx, libID, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, it := range qAll {
+		if it.ID == "A" {
+			found = true
+			if it.State != string(domain.StateReview) {
+				t.Fatalf("自由复习中 A 状态 = %s, 期望 review", it.State)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("自由复习应包含未到期卡 A")
+	}
+	if len(qAll) != 3 {
+		t.Fatalf("自由复习队列 = %d, 期望 3", len(qAll))
 	}
 }

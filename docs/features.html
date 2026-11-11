@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FuPan 复盘 — 已实现功能一览</title>
+<style>
+  :root {
+    --paper: #F7F6F1;
+    --card:  #FFFFFF;
+    --ink:   #22262E;
+    --ink-2: #5A6070;
+    --rule:  #D8D5CC;
+    --blue:  #2B4C9B;   /* 钢笔靛蓝 */
+    --blue-soft: #E8EDF8;
+    --seal:  #B5402F;   /* 朱砂，只用于"记住"级标记 */
+    --serif: "Songti SC", "Noto Serif SC", "Source Han Serif SC", STSong, serif;
+    --sans:  -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .flip-inner, .demo-card .flip-inner { transition: none !important; }
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ---- 页眉：像卡片盒的封皮 ---- */
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding: 56px 24px 48px;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  .brand h1 {
+    font-family: var(--serif);
+    font-size: clamp(38px, 6vw, 58px);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+  }
+  .brand .en {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 20px;
+    color: var(--blue);
+  }
+  .lede {
+    margin-top: 14px;
+    max-width: 34em;
+    color: var(--ink-2);
+    font-size: 16px;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .hero-row {
+    display: flex; gap: 48px; align-items: center; flex-wrap: wrap;
+    margin-top: 36px;
+  }
+  .hero-demo { flex: 0 0 auto; }
+
+  /* ---- 可翻示例卡（点我） ---- */
+  .demo-card {
+    width: 300px; height: 190px;
+    perspective: 1200px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .demo-card .flip-inner, .feature .flip-inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform .5s cubic-bezier(.4,.1,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flipped .flip-inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border: 1.5px solid var(--ink);
+    background: var(--card);
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 22px 26px;
+  }
+  .face.back { transform: rotateY(180deg); background: var(--blue-soft); }
+  .demo-card .q {
+    font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1.5;
+  }
+  .demo-card .a { font-size: 15px; line-height: 1.7; }
+  .hint {
+    margin-top: 10px; font-size: 12.5px; color: var(--ink-2);
+  }
+  .hint b { color: var(--blue); font-weight: 600; }
+  .hero-facts { flex: 1 1 260px; min-width: 240px; }
+  .hero-facts ul { list-style: none; }
+  .hero-facts li {
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--rule);
+    font-size: 14px;
+    color: var(--ink-2);
+    display: flex; justify-content: space-between; gap: 12px;
+  }
+  .hero-facts li b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---- 章节：卡片盒分隔标签 ---- */
+  nav.box-tabs {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--paper);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 24px;
+  }
+  nav.box-tabs .inner {
+    max-width: 1080px; margin: 0 auto;
+    display: flex; gap: 4px; overflow-x: auto;
+  }
+  nav.box-tabs a {
+    font-family: var(--serif);
+    font-size: 14.5px; font-weight: 700;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 11px 16px 9px;
+    border: 1.5px solid transparent; border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    white-space: nowrap;
+  }
+  nav.box-tabs a:hover { color: var(--ink); }
+  nav.box-tabs a.active {
+    background: var(--card);
+    border-color: var(--ink);
+    color: var(--ink);
+    transform: translateY(1.5px);
+  }
+  :is(a, button):focus-visible {
+    outline: 2.5px solid var(--blue); outline-offset: 2px;
+  }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 0 24px 90px; }
+  section { padding-top: 56px; }
+  .sec-head {
+    display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px;
+  }
+  .sec-head h2 {
+    font-family: var(--serif);
+    font-size: 26px; font-weight: 900; letter-spacing: 0.04em;
+  }
+  .sec-head .tag {
+    font-size: 12.5px; color: var(--ink-2);
+    border: 1px solid var(--rule); border-radius: 99px; padding: 2px 10px;
+    background: var(--card);
+  }
+  .sec-desc { color: var(--ink-2); max-width: 42em; margin-bottom: 26px; font-size: 14.5px; }
+
+  /* ---- 闭环流程图 ---- */
+  .flow {
+    background: var(--card);
+    border: 1.5px solid var(--ink);
+    padding: 26px 18px 12px;
+    overflow-x: auto;
+  }
+  .flow svg { display: block; min-width: 640px; width: 100%; height: auto; }
+
+  /* ---- 功能翻卡墙 ---- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+  }
+  .feature { height: 218px; perspective: 1200px; }
+  .feature .flip-btn {
+    all: unset; display: block; width: 100%; height: 100%;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .feature .face { justify-content: flex-start; padding: 20px 22px 16px; }
+  .feature .cat {
+    font-size: 11.5px; color: var(--blue); font-weight: 700;
+    letter-spacing: 0.14em; margin-bottom: 8px;
+  }
+  .feature h3 {
+    font-family: var(--serif); font-size: 19px; font-weight: 900;
+    line-height: 1.4; margin-bottom: 8px;
+  }
+  .feature .one { font-size: 13.5px; color: var(--ink-2); line-height: 1.65; }
+  .feature .flip-tag {
+    margin-top: auto; padding-top: 10px;
+    font-size: 12px; color: var(--blue); font-weight: 600;
+  }
+  .feature .face.back { padding-top: 18px; }
+  .feature .face.back ul { list-style: none; font-size: 13.5px; line-height: 1.9; }
+  .feature .face.back li { padding-left: 16px; position: relative; }
+  .feature .face.back li::before {
+    content: "✓"; position: absolute; left: 0; color: var(--seal);
+    font-weight: 700; font-size: 12px; top: 1px;
+  }
+  .feature .back-hint { margin-top: auto; padding-top: 8px; font-size: 11.5px; color: var(--ink-2); }
+
+  /* ---- 技术底座 ---- */
+  .stack {
+    border: 1.5px solid var(--ink);
+    background: var(--card);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  .stack div {
+    padding: 18px 22px;
+    border-right: 1px dashed var(--rule);
+  }
+  .stack div:last-child { border-right: none; }
+  .stack b { display: block; font-family: var(--serif); font-size: 16px; font-weight: 900; margin-bottom: 3px; }
+  .stack span { font-size: 13px; color: var(--ink-2); }
+
+  /* ---- 版记 ---- */
+  footer {
+    margin-top: 64px;
+    border-top: 2px solid var(--ink);
+    padding: 22px 2px 0;
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    font-size: 13px; color: var(--ink-2);
+  }
+  footer .v { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>FuPan 复盘</h1>
+    <span class="en">memorize by reviewing</span>
+  </div>
+  <p class="lede">
+    一个<strong>单文件部署</strong>的间隔重复记忆应用：把你的 Markdown 笔记切成卡片，
+    用 <strong>FSRS 遗忘曲线</strong>安排复习，配一个会<strong>质询、联网核实、并提案改进卡片</strong>的 AI 考官。
+    以下是当前已实现的功能，<b style="color:var(--blue)">每张卡都可以点击翻面</b>——就像复习时那样。
+  </p>
+
+  <div class="hero-row">
+    <div class="hero-demo">
+      <div class="demo-card" id="demoCard" role="button" tabindex="0" aria-pressed="false"
+           aria-label="示例卡片，点击翻面">
+        <div class="flip-inner">
+          <div class="face">
+            <p class="q">为什么间隔重复<br>比集中背诵记得牢？</p>
+          </div>
+          <div class="face back">
+            <p class="a">遗忘主要发生在回忆刚建立时；在<b>快要忘记</b>的临界点提取记忆，每次成功回忆都会拉长下一次遗忘的间隔——这就是 FuPan 用 FSRS 调度每张卡的原因。</p>
+          </div>
+        </div>
+      </div>
+      <p class="hint">👆 <b>点击卡片翻面</b>——复习时的动作，这里也一样</p>
+    </div>
+
+    <div class="hero-facts">
+      <ul>
+        <li><span>知识库与卡片</span><b>多库管理 · 溯源到原文</b></li>
+        <li><span>调度算法</span><b>FSRS（可调目标保持率）</b></li>
+        <li><span>部署形态</span><b>Go 单二进制 · SQLite · 零外部依赖</b></li>
+        <li><span>AI 服务商</span><b>DeepSeek / 智谱 / OpenAI / Ollama 混搭</b></li>
+        <li><span>界面</span><b>内置静态前端 · 纸质主题</b></li>
+      </ul>
+    </div>
+  </div>
+</header>
+
+<nav class="box-tabs" aria-label="章节">
+  <div class="inner">
+    <a href="#loop" class="active">学习闭环</a>
+    <a href="#cards">笔记出卡</a>
+    <a href="#review">复习与统计</a>
+    <a href="#agent">AI 考官</a>
+    <a href="#stack">技术底座</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ══════════ 学习闭环 ══════════ -->
+  <section id="loop">
+    <div class="sec-head"><h2>学习闭环</h2><span class="tag">从一篇笔记到长期记忆</span></div>
+    <p class="sec-desc">四个环节全部打通，中间没有一步需要离开这个应用。</p>
+    <div class="flow">
+      <svg viewBox="0 0 960 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="导入、出卡、复习、回顾四个环节的流程图">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#2B4C9B"/>
+          </marker>
+        </defs>
+        <!-- 步骤卡 -->
+        <g font-family="PingFang SC, sans-serif">
+          <!-- 1 导入 -->
+          <rect x="20" y="40" width="185" height="96" fill="#FFFFFF" stroke="#22262E" stroke-width="1.5"/>
+          <text x="38" y="70" font-size="15" font-weight="700" fill="#22262E">① 导入切片</text>
+          <text x="38" y="94" font-size="12" fill="#5A6070">Markdown / TXT</text>
+          <text x="38" y="114" font-size="12" fill="#5A6070">标题树 + 段落双粒度</text>
+          <!-- 2 出卡 -->
+          <rect x="262" y="40" width="185" height="96" fill="#FFFFFF" stroke="#22262E" stroke-width="1.5"/>
+          <text x="280" y="70" font-size="15" font-weight="700" fill="#22262E">② AI 出卡</text>
+          <text x="280" y="94" font-size="12" fill="#5A6070">先预览、你确认才入库</text>
+          <text x="280" y="114" font-size="12" fill="#5A6070">自动分类 · 绑定原文</text>
+          <!-- 3 复习 -->
+          <rect x="504" y="40" width="185" height="96" fill="#E8EDF8" stroke="#22262E" stroke-width="1.5"/>
+          <text x="522" y="70" font-size="15" font-weight="700" fill="#22262E">③ FSRS 复习</text>
+          <text x="522" y="94" font-size="12" fill="#5A6070">四档评分 · 键盘快捷键</text>
+          <text x="522" y="114" font-size="12" fill="#5A6070">每日新卡上限可控</text>
+          <!-- 4 回顾 -->
+          <rect x="746" y="40" width="194" height="96" fill="#FFFFFF" stroke="#22262E" stroke-width="1.5"/>
+          <text x="764" y="70" font-size="15" font-weight="700" fill="#22262E">④ 回顾校准</text>
+          <text x="764" y="94" font-size="12" fill="#5A6070">30 天复习曲线 · 记住率</text>
+          <text x="764" y="114" font-size="12" fill="#5A6070">AI 质询暴露弱项</text>
+          <!-- 箭头 -->
+          <line x1="205" y1="88" x2="254" y2="88" stroke="#2B4C9B" stroke-width="1.8" marker-end="url(#arr)"/>
+          <line x1="447" y1="88" x2="496" y2="88" stroke="#2B4C9B" stroke-width="1.8" marker-end="url(#arr)"/>
+          <line x1="689" y1="88" x2="738" y2="88" stroke="#2B4C9B" stroke-width="1.8" marker-end="url(#arr)"/>
+          <!-- 回环：回顾校准反馈到复习 -->
+          <path d="M 843 140 L 843 168 L 596 168 L 596 144" fill="none" stroke="#B5402F" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+          <text x="640" y="162" font-size="11.5" fill="#B5402F">弱项回流：多角度追问</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ══════════ 笔记出卡 ══════════ -->
+  <section id="cards">
+    <div class="sec-head"><h2>笔记出卡</h2><span class="tag">导入 → 管理</span></div>
+    <p class="sec-desc">笔记进去，卡片出来，每张卡都能回答"这句结论出自原文哪里"。</p>
+    <div class="grid">
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="导入与切片，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">笔记出卡</p>
+              <h3>Markdown / TXT 导入</h3>
+              <p class="one">拖进来就切片：按标题树和段落两种粒度切，长文不会一刀切烂。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>标题树切片：保留文档层级</li>
+                <li>段落切片：长段按固定长度二次切</li>
+                <li>文档内可增删改切片（带版本）</li>
+                <li>向量化降级：嵌入挂了导入照常成功</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="AI 出卡，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">笔记出卡</p>
+              <h3>AI 批量出卡（先审后收）</h3>
+              <p class="one">AI 对每个切片出 2–5 张问答卡，你勾选预览、确认后才落库。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>出卡自动打分类标签（2–6 字）</li>
+                <li>预览显示溯源：文档 › 小节</li>
+                <li>对话与嵌入可走不同服务商</li>
+                <li>DeepSeek / 智谱 / OpenAI / Ollama</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="卡片管理，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">笔记出卡</p>
+              <h3>卡片管理</h3>
+              <p class="one">每张卡随时可改可删，改错的卡片不用等它自己过期。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>按分类筛选，行内编辑正反面</li>
+                <li>删除 = 归档，调度记录保留</li>
+                <li>卡片溯源：一键跳回原文位置</li>
+                <li>AI 的修改提案在这里确认生效</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 复习与统计 ══════════ -->
+  <section id="review">
+    <div class="sec-head"><h2>复习与统计</h2><span class="tag">FSRS 调度</span></div>
+    <p class="sec-desc">该复习的按时出现，不该被打断的节奏不被打断；想加练、想纯浏览，也都有入口。</p>
+    <div class="grid">
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="FSRS 复习，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">复习与统计</p>
+              <h3>FSRS 遗忘曲线调度</h3>
+              <p class="one">四档评分（想不起 / 模糊 / 想起 / 秒答）驱动每张卡的下次到期时间。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>目标保持率可调（默认 0.9）</li>
+                <li>每日新卡上限，主动加量可突破</li>
+                <li>翻面键盘快捷键，全键盘复习</li>
+                <li>到期队列优先，逾期自动滚入今天</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="自由复习与随机抽题，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">复习与统计</p>
+              <h3>自由复习 · 随机抽题</h3>
+              <p class="one">今天没到期也能加练；考前想过一遍不用刷记忆曲线。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>自由复习：全部卡进队，评分照常计</li>
+                <li>随机抽题：选分类 + 张数（10/20/50）</li>
+                <li>抽题纯浏览，不写调度不打扰曲线</li>
+                <li>支持一轮结束后再来一轮</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="记忆统计面板，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">复习与统计</p>
+              <h3>记忆统计面板</h3>
+              <p class="one">学了多少、明天来多少、最近记得牢不牢，一屏看完。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>卡片状态分布（新/学习/复习）</li>
+                <li>未来 7 天到期预测直方图</li>
+                <li>近 30 天复习量 + 记住率曲线</li>
+                <li>今日引入 / 今日复习 / 当前到期</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ AI 考官 ══════════ -->
+  <section id="agent">
+    <div class="sec-head"><h2>AI 考官</h2><span class="tag">Agent 问答式复习</span></div>
+    <p class="sec-desc">把卡片丢给一个AI 考官：它会追问你的薄弱点，联网核实你的答案，想改卡片时先提案、你点头才算数。三条红线：判级你确认、修改你批准、额度你可控。</p>
+    <div class="grid">
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="问答式复习，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">AI 考官</p>
+              <h3>问答式复习</h3>
+              <p class="one">不是让你点"认识/不认识"，而是像考官一样追问、追问、再追问。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>开局注入弱项历史（低分卡重点照顾）</li>
+                <li>可调复习记录明细与库内语义检索</li>
+                <li>判级建议 1–4，你确认后才计入曲线</li>
+                <li>无状态会话，换页不丢上下文</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="联网核实，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">AI 考官</p>
+              <h3>联网核实</h3>
+              <p class="one">怀疑卡片内容过时或记错？考官现场搜索对照来源。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>Tavily / 博查，设置页切换</li>
+                <li>自带 Key + 每日限额，成本封顶</li>
+                <li>不配置则功能隐藏，不影响其他</li>
+                <li>支持自定义端点（可挂代理）</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="feature">
+        <button class="flip-btn" aria-pressed="false" aria-label="卡片提案，点击翻面看细节">
+          <div class="flip-inner">
+            <div class="face">
+              <p class="cat">AI 考官</p>
+              <h3>卡片提案（写回）</h3>
+              <p class="one">AI 发现卡面表述不准、或这段对话值得变成新卡，只提提案。</p>
+              <p class="flip-tag">翻面看细节 ↻</p>
+            </div>
+            <div class="face back">
+              <ul>
+                <li>改卡提案：附修改理由，采纳才更新</li>
+                <li>新增提案：强制绑定溯源切片</li>
+                <li>提案区集中管理：采纳 / 拒绝</li>
+                <li>新增卡自动进入复习队列</li>
+              </ul>
+              <p class="back-hint">再点一下翻回去</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 技术底座 ══════════ -->
+  <section id="stack">
+    <div class="sec-head"><h2>技术底座</h2><span class="tag">为上线设计</span></div>
+    <p class="sec-desc">跑起来只有一个文件；数据就在你手里。</p>
+    <div class="stack">
+      <div><b>Go 单二进制</b><span>前端经 go:embed 内嵌，./fupan 即起服务，无 Docker 依赖</span></div>
+      <div><b>SQLite 存储</b><span>卡片、调度、日志、提案单库管理，备份即拷文件</span></div>
+      <div><b>OpenAI 兼容协议</b><span>对话与嵌入独立配置，任意兼容服务商可接</span></div>
+      <div><b>HITL 设计</b><span>出卡、判级、改卡三处 AI 动作全部人工确认</span></div>
+      <div><b>BYOK 计费</b><span>AI 与搜索均用用户自己的 Key，部署方零边际成本</span></div>
+      <div><b>幂等迁移</b><span>schema_migrations 记录表，旧库升级无感</span></div>
+    </div>
+
+    <footer>
+      <span>FuPan 复盘 — 已实现功能一览（截至 2026-10）</span>
+      <span class="v">V0.5 多库出卡 → V0.6 分类管理 → V0.7 复习增强 + Agent</span>
+    </footer>
+  </section>
+
+</main>
+
+<script>
+  // 翻卡：点击或回车/空格翻转（与复习动作一致）。
+  function bindFlip(el) {
+    const toggle = () => {
+      const on = el.classList.toggle("flipped");
+      const t = el.querySelector("[aria-pressed]");
+      if (t) t.setAttribute("aria-pressed", String(on));
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+  }
+  bindFlip(document.getElementById("demoCard"));
+  document.querySelectorAll(".feature .flip-btn").forEach(bindFlip);
+
+  // 章节标签高亮。
+  const links = [...document.querySelectorAll("nav.box-tabs a")];
+  const secs = links.map(a => document.querySelector(a.getAttribute("href")));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        links.forEach(l => l.classList.toggle("active",
+          l.getAttribute("href") === "#" + en.target.id));
+      }
+    });
+  }, { rootMargin: "-30% 0px -60% 0px" });
+  secs.forEach(s => s && io.observe(s));
+</script>
+</body>
+</html>

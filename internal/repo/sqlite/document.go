@@ -69,6 +69,16 @@ func (s *store) ListDocIDs(ctx context.Context, libraryID string) ([]string, err
 }
 
 func (s *store) DeleteDocument(ctx context.Context, id string) error {
-	_, err := s.q.ExecContext(ctx, `DELETE FROM documents WHERE id=?`, id)
-	return err
+	result, err := s.q.ExecContext(ctx, `DELETE FROM documents WHERE id=?`, id)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

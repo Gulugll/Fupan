@@ -110,7 +110,7 @@ func buildChunkRows(docID string, units []chunker.Unit) (rows []domain.Chunk, ch
 
 // indexChildren 子块向量化并写入 Milvus；任何失败只记录日志（不阻塞导入）。
 func (s *ImportService) indexChildren(ctx context.Context, doc *domain.Document, children []domain.Chunk) {
-	if len(children) == 0 || s.embedder == nil {
+	if len(children) == 0 || s.embedder == nil || s.vectors == nil || !s.vectors.Enabled() {
 		return
 	}
 	batch := s.embedBatch

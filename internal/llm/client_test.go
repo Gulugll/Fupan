@@ -44,6 +44,27 @@ func TestChatOpenAICompatible(t *testing.T) {
 	}
 }
 
+func TestClientDoesNotFollowRedirects(t *testing.T) {
+	targetCalled := false
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		targetCalled = true
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"should not happen"}}]}`))
+	}))
+	defer target.Close()
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusTemporaryRedirect)
+	}))
+	defer redirect.Close()
+
+	client := NewClient(Config{BaseURL: redirect.URL, APIKey: "secret"})
+	if _, err := client.Chat(context.Background(), ChatRequest{Messages: []Message{{Role: "user", Content: "x"}}}); err == nil {
+		t.Fatal("LLM 重定向必须被拒绝")
+	}
+	if targetCalled {
+		t.Fatal("LLM 重定向目标不得收到请求")
+	}
+}
+
 func TestChatResponseFormatJSON(t *testing.T) {
 	var gotBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

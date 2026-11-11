@@ -125,6 +125,34 @@ func TestCommitRejectsUnknownChunk(t *testing.T) {
 	}
 }
 
+func TestCardServicesRejectChunkFromAnotherLibrary(t *testing.T) {
+	d, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	store := d.Store()
+	settings := NewSettingsService(store, newTestConfig())
+	fakeLLMSettings(t, store, settings)
+	libraryID, chunkID := seedChunk(t, store)
+	if err := store.CreateLibrary(context.Background(), &domain.Library{ID: "l2", Name: "其他库", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewCardService(store, settings)
+
+	previews, errs, err := svc.Preview(context.Background(), "l2", []string{chunkID})
+	if err != nil || len(previews) != 0 || len(errs) != 1 {
+		t.Fatalf("跨库预览应被拒绝: previews=%v errs=%v err=%v", previews, errs, err)
+	}
+	if _, err := svc.Commit(context.Background(), "l2", []CommitCard{{Front: "f", Back: "b", SourceChunkID: chunkID}}); err == nil {
+		t.Fatal("跨库提交应被拒绝")
+	}
+	cards, err := store.ListCards(context.Background(), libraryID, "")
+	if err != nil || len(cards) != 0 {
+		t.Fatalf("拒绝跨库提交后不应产生卡片: cards=%v err=%v", cards, err)
+	}
+}
+
 func TestPreviewRequiresAPIKey(t *testing.T) {
 	d, err := sqlite.Open(":memory:")
 	if err != nil {

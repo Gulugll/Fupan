@@ -40,6 +40,12 @@ type Store interface {
 	// --- Card ---
 	CreateCards(ctx context.Context, cards []domain.Card) error
 	GetCard(ctx context.Context, id string) (*domain.Card, error)
+	// ListCards 列出某库 status='active' 的卡片（新→旧），category 非空时按分类过滤。
+	ListCards(ctx context.Context, libraryID, category string) ([]domain.Card, error)
+	// UpdateCard 更新卡片正/背面与分类（不动溯源与调度）。
+	UpdateCard(ctx context.Context, c *domain.Card) error
+	// ArchiveCard 软删：status='archived'，调度与复习日志保留（不在复习/列表出现）。
+	ArchiveCard(ctx context.Context, id string) error
 	// DeleteCardsByDoc 删除某文档全部切片所挂靠的卡片（调度与复习日志经外键级联）。
 	DeleteCardsByDoc(ctx context.Context, docID string) error
 
@@ -52,6 +58,13 @@ type Store interface {
 	ListDueCards(ctx context.Context, libraryID string, now time.Time) ([]domain.Card, []domain.Schedule, error)
 	// ListNewCards 返回某库中尚未进入调度（state=new）的卡片。
 	ListNewCards(ctx context.Context, libraryID string) ([]domain.Card, []domain.Schedule, error)
+	// ListAllCards 返回某库全部 active 卡片及调度状态（自由复习用），按 due 升序。
+	ListAllCards(ctx context.Context, libraryID string) ([]domain.Card, []domain.Schedule, error)
+	// ListRandomCards 随机抽卡（随机题目模式），category 非空时按分类过滤。
+	// 不写调度与复习日志——纯浏览，不计分。
+	ListRandomCards(ctx context.Context, libraryID, category string, limit int) ([]domain.Card, error)
+	// ReviewDailyHistory 按天统计 [since, now] 的复习次数与记住次数（rating>=3）。
+	ReviewDailyHistory(ctx context.Context, libraryID string, since time.Time) ([]domain.DayReview, error)
 	// CountReviewsOn 统计某库在 [dayStart, dayEnd) 区间内的复习次数。
 	CountReviewsOn(ctx context.Context, libraryID string, dayStart, dayEnd time.Time) (int, error)
 	// DueDayHistogram 按天统计某库非新卡的到期数（due ∈ [from, to]，key 为 YYYY-MM-DD）。
@@ -59,6 +72,16 @@ type Store interface {
 	// CountCardsByState 按调度状态统计某库卡片数。
 	CountCardsByState(ctx context.Context, libraryID string) (map[string]int, error)
 	InsertReviewLog(ctx context.Context, log *domain.ReviewLog) error
+	// ListReviewLogsByCard 某卡全部复习记录（时间升序，agent 弱项分析数据源）。
+	ListReviewLogsByCard(ctx context.Context, cardID string) ([]domain.ReviewLog, error)
+
+	// --- CardProposal（agent 写回提案，HITL） ---
+	CreateProposal(ctx context.Context, p *domain.CardProposal) error
+	GetProposal(ctx context.Context, id string) (*domain.CardProposal, error)
+	// ListProposals 某库提案，status 为空时返回全部。
+	ListProposals(ctx context.Context, libraryID, status string) ([]domain.CardProposal, error)
+	// SetProposalStatus 更新提案状态（pending→applied/rejected 单向流转）。
+	SetProposalStatus(ctx context.Context, id, status string) error
 
 	// --- Settings ---
 	GetSetting(ctx context.Context, key string) (string, error)

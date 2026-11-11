@@ -3,10 +3,12 @@ module github.com/Gulugll/fupan
 go 1.26.1
 
 require (
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/milvus-io/milvus-sdk-go/v2 v2.4.2
 	github.com/open-spaced-repetition/go-fsrs/v4 v4.0.0
+	golang.org/x/oauth2 v0.33.0
 	modernc.org/sqlite v1.60.1
 )
 
@@ -22,6 +24,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/getsentry/sentry-go v0.12.0 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect

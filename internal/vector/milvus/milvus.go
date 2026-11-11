@@ -29,6 +29,8 @@ type Store struct {
 
 var _ vector.VectorStore = (*Store)(nil)
 
+func (s *Store) Enabled() bool { return true }
+
 // New 连接 Milvus 并确保 collection 存在。不可达时返回 vector.ErrUnavailable 供上层降级。
 func New(ctx context.Context, cfg Config) (*Store, error) {
 	if cfg.Dim <= 0 {

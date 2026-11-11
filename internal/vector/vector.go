@@ -36,6 +36,7 @@ type Hit struct {
 
 // VectorStore 向量库统一接口。V0.5 用到 Upsert / DeleteByDoc / Search（Search 供调试端点验证链路）。
 type VectorStore interface {
+	Enabled() bool
 	Upsert(ctx context.Context, items []Item) error
 	DeleteByDoc(ctx context.Context, docID string) error
 	Search(ctx context.Context, query []float32, topK int, f Filter) ([]Hit, error)
@@ -45,8 +46,9 @@ type VectorStore interface {
 // NoopStore 空实现：Milvus 不可达时的降级后端（本地优先，功能不阻塞）。
 type NoopStore struct{}
 
-func (NoopStore) Upsert(ctx context.Context, items []Item) error            { return nil }
-func (NoopStore) DeleteByDoc(ctx context.Context, docID string) error       { return nil }
+func (NoopStore) Enabled() bool                                       { return false }
+func (NoopStore) Upsert(ctx context.Context, items []Item) error      { return nil }
+func (NoopStore) DeleteByDoc(ctx context.Context, docID string) error { return nil }
 func (NoopStore) Search(ctx context.Context, q []float32, k int, f Filter) ([]Hit, error) {
 	return nil, nil
 }

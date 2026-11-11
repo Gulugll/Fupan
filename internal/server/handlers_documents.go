@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -18,7 +19,11 @@ type createLibraryReq struct {
 }
 
 func (a *App) listLibraries(c *gin.Context) {
-	libs, err := a.store.ListLibraries(c.Request.Context())
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
+	libs, err := services.Store.ListLibraries(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -30,6 +35,10 @@ func (a *App) listLibraries(c *gin.Context) {
 }
 
 func (a *App) createLibrary(c *gin.Context) {
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
 	var req createLibraryReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -41,7 +50,7 @@ func (a *App) createLibrary(c *gin.Context) {
 		Description: req.Description,
 		CreatedAt:   time.Now(),
 	}
-	if err := a.store.CreateLibrary(c.Request.Context(), lib); err != nil {
+	if err := services.Store.CreateLibrary(c.Request.Context(), lib); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "创建失败（可能重名）: " + err.Error()})
 		return
 	}
@@ -49,7 +58,11 @@ func (a *App) createLibrary(c *gin.Context) {
 }
 
 func (a *App) deleteLibrary(c *gin.Context) {
-	if err := a.importSvc.DeleteLibrary(c.Request.Context(), c.Param("libId")); err != nil {
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
+	if err := services.Import.DeleteLibrary(c.Request.Context(), c.Param("libId")); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -65,14 +78,18 @@ type documentSummary struct {
 }
 
 func (a *App) listDocuments(c *gin.Context) {
-	docs, err := a.store.ListDocuments(c.Request.Context(), c.Param("libId"))
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
+	docs, err := services.Store.ListDocuments(c.Request.Context(), c.Param("libId"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	out := make([]documentSummary, 0, len(docs))
 	for _, d := range docs {
-		chunks, _ := a.store.ListChunksByDoc(c.Request.Context(), d.ID)
+		chunks, _ := services.Store.ListChunksByDoc(c.Request.Context(), d.ID)
 		n := int64(0)
 		for _, ch := range chunks {
 			if ch.Kind == domain.ChunkChild {
@@ -88,8 +105,12 @@ func (a *App) listDocuments(c *gin.Context) {
 }
 
 func (a *App) uploadDocument(c *gin.Context) {
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
 	libID := c.Param("libId")
-	if _, err := a.store.GetLibrary(c.Request.Context(), libID); err != nil {
+	if _, err := services.Store.GetLibrary(c.Request.Context(), libID); err != nil {
 		status := http.StatusInternalServerError
 		if err == repo.ErrNotFound {
 			status = http.StatusNotFound
@@ -130,7 +151,7 @@ func (a *App) uploadDocument(c *gin.Context) {
 		return
 	}
 	title := fh.Filename
-	doc, childCount, err := a.importSvc.Import(c.Request.Context(), libID, title, format, string(buf))
+	doc, childCount, err := services.Import.Import(c.Request.Context(), libID, title, format, string(buf))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -142,8 +163,12 @@ func (a *App) uploadDocument(c *gin.Context) {
 }
 
 func (a *App) getDocument(c *gin.Context) {
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
 	ctx := c.Request.Context()
-	doc, err := a.store.GetDocument(ctx, c.Param("docId"))
+	doc, err := services.Store.GetDocument(ctx, c.Param("docId"))
 	if err == repo.ErrNotFound {
 		c.JSON(http.StatusNotFound, gin.H{"error": "文档不存在"})
 		return
@@ -152,7 +177,7 @@ func (a *App) getDocument(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	chunks, err := a.store.ListChunksByDoc(ctx, doc.ID)
+	chunks, err := services.Store.ListChunksByDoc(ctx, doc.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -161,7 +186,15 @@ func (a *App) getDocument(c *gin.Context) {
 }
 
 func (a *App) deleteDocument(c *gin.Context) {
-	if err := a.importSvc.DeleteDocument(c.Request.Context(), c.Param("docId")); err != nil {
+	services, ok := requestServices(c)
+	if !ok {
+		return
+	}
+	if err := services.Import.DeleteDocument(c.Request.Context(), c.Param("docId")); err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "文档不存在"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

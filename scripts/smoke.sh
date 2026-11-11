@@ -37,7 +37,7 @@ DETAIL=$(curl -sf "$BASE/api/documents/$DOC_ID")
 echo "$DETAIL" | grep -q "第一章 FSRS" && ok "chunk 含标题路径" || bad "chunk 缺标题路径"
 
 step "5. 复习队列为空（尚无卡片，属预期）"
-Q=$(curl -sf "$BASE/api/libraries/$LIB_ID/review/queue")
+Q=$(curl -sf -X POST "$BASE/api/libraries/$LIB_ID/review/queue")
 ok "queue: $(echo "$Q" | head -c 60)…"
 
 step "6. 清理"

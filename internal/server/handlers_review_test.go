@@ -15,15 +15,15 @@ import (
 func seedReviewData(t *testing.T, app *App, libID string) string {
 	t.Helper()
 	ctx := t.Context()
-	if err := app.store.CreateDocument(ctx, &domain.Document{
+	if err := app.local.Store.CreateDocument(ctx, &domain.Document{
 		ID: "d1", LibraryID: libID, Title: "机器学习笔记", Format: "md", CreatedAt: time.Now(),
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.store.InsertChunks(ctx, []domain.Chunk{{
+	if err := app.local.Store.InsertChunks(ctx, []domain.Chunk{{
 		ID: "p1", DocID: "d1", Kind: domain.ChunkParent, TitlePath: "机器学习笔记 > 2.3 损失函数",
 		Content: "## 2.3 损失函数\n\n损失函数衡量预测值与真实值的差异。均方误差是回归任务最常用的损失。交叉熵则用于分类任务。",
-		Author: domain.AuthorUser, Version: 1, CreatedAt: time.Now(),
+		Author:  domain.AuthorUser, Version: 1, CreatedAt: time.Now(),
 	}, {
 		ID: "c1", DocID: "d1", ParentID: "p1", Kind: domain.ChunkChild, TitlePath: "机器学习笔记 > 2.3 损失函数",
 		Content: "损失函数衡量预测值与真实值的差异。", CharStart: 0, CharEnd: 15,
@@ -31,13 +31,13 @@ func seedReviewData(t *testing.T, app *App, libID string) string {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.store.CreateCards(ctx, []domain.Card{{
+	if err := app.local.Store.CreateCards(ctx, []domain.Card{{
 		ID: "card1", LibraryID: libID, Front: "什么是损失函数？", Back: "衡量预测值与真实值差异的函数",
 		Type: domain.CardQA, SourceChunkID: "c1", SourceVersion: 1, Status: "active", CreatedAt: time.Now(),
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.store.UpsertSchedule(ctx, &domain.Schedule{
+	if err := app.local.Store.UpsertSchedule(ctx, &domain.Schedule{
 		CardID: "card1", State: domain.StateNew, Due: time.Now(),
 	}); err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestReviewFlowAPI(t *testing.T) {
 
 	// 1. 队列应包含新卡。
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/libraries/"+libID+"/review/queue", nil))
+	r.ServeHTTP(w, newTestRequest(http.MethodPost, "/api/libraries/"+libID+"/review/queue", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("队列失败: %d %s", w.Code, w.Body.String())
 	}
@@ -71,7 +71,7 @@ func TestReviewFlowAPI(t *testing.T) {
 	// 2. 评分 good(3)。
 	w = httptest.NewRecorder()
 	body, _ := json.Marshal(map[string]int{"rating": 3})
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/cards/"+cardID+"/review", bytes.NewReader(body)))
+	r.ServeHTTP(w, newTestRequest(http.MethodPost, "/api/cards/"+cardID+"/review", bytes.NewReader(body)))
 	if w.Code != http.StatusOK {
 		t.Fatalf("评分失败: %d %s", w.Code, w.Body.String())
 	}
@@ -88,7 +88,7 @@ func TestReviewFlowAPI(t *testing.T) {
 
 	// 3. 溯源徽章数据。
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/cards/"+cardID+"/source", nil))
+	r.ServeHTTP(w, newTestRequest(http.MethodGet, "/api/cards/"+cardID+"/source", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("溯源失败: %d %s", w.Code, w.Body.String())
 	}
@@ -110,7 +110,7 @@ func TestReviewAPIRejectsBadRating(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	body, _ := json.Marshal(map[string]int{"rating": 9})
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/cards/"+cardID+"/review", bytes.NewReader(body)))
+	r.ServeHTTP(w, newTestRequest(http.MethodPost, "/api/cards/"+cardID+"/review", bytes.NewReader(body)))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("rating=9 应被拒绝: %d", w.Code)
 	}

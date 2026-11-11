@@ -58,13 +58,14 @@ type CardType string
 
 const CardQA CardType = "qa"
 
-// Card 卡片。source_chunk_id 溯源必填。
+// Card 卡片。source_chunk_id 溯源必填；category 为可选分类标签（V0.6）。
 type Card struct {
 	ID            string    `json:"id"`
 	LibraryID     string    `json:"library_id"`
 	Front         string    `json:"front"`
 	Back          string    `json:"back"`
 	Type          CardType  `json:"type"`
+	Category      string    `json:"category"`
 	SourceChunkID string    `json:"source_chunk_id"`
 	SourceVersion int       `json:"source_version"`
 	Status        string    `json:"status"`
@@ -101,4 +102,23 @@ type ReviewLog struct {
 	CardID     string    `json:"card_id"`
 	Rating     int       `json:"rating"` // 1=again 2=hard 3=good 4=easy
 	ReviewedAt time.Time `json:"reviewed_at"`
+}
+
+// DayReview 按天复习统计（遗忘曲线面板数据源）。
+type DayReview struct {
+	Date    string `json:"date"`    // YYYY-MM-DD
+	Reviews int    `json:"reviews"` // 当天复习次数
+	Good    int    `json:"good"`    // 其中 rating>=3（想起来了/秒答）次数
+}
+
+// CardProposal agent 写回提案（HITL）：pending 待用户裁决，applied/rejected 终态。
+type CardProposal struct {
+	ID        string    `json:"id"`
+	LibraryID string    `json:"library_id"`
+	CardID    string    `json:"card_id"` // edit 提案指向被改卡；new 为空
+	Kind      string    `json:"kind"`    // 'edit' | 'new'
+	Payload   string    `json:"payload"` // JSON: {front,back,category,source_chunk_id?}
+	Status    string    `json:"status"`  // 'pending' | 'applied' | 'rejected'
+	Rationale string    `json:"rationale"`
+	CreatedAt time.Time `json:"created_at"`
 }

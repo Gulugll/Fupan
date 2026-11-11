@@ -68,7 +68,7 @@ export default function DocumentDetail() {
   const commit = async () => {
     if (!doc?.library_id) return;
     const cards = [...chosen].map((i) => previews[i]).map((p) => ({
-      front: p.front, back: p.back, source_chunk_id: p.source_chunk_id,
+      front: p.front, back: p.back, category: p.category ?? "", source_chunk_id: p.source_chunk_id,
     }));
     const res = await api.commitCards(doc.library_id, cards);
     navigate(`/library/${doc.library_id}`, {
@@ -203,6 +203,9 @@ export default function DocumentDetail() {
                     <p className="mt-2 text-[11px] tracking-widest text-faint">答</p>
                     <Markdown text={p.back} className="text-sm text-ink-soft" />
                     <p className="mt-2.5 border-t border-dashed border-line pt-2 text-xs text-faint">
+                      {p.category && (
+                        <span className="mr-2 rounded-md bg-[#5a6f4e]/10 px-1.5 py-0.5 text-[#5a6f4e]">{p.category}</span>
+                      )}
                       <span className="text-seal">溯源</span> {p.doc_title} › {p.title_path}
                     </p>
                   </div>

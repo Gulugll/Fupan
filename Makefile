@@ -13,9 +13,9 @@ build: web
 backend:
 	CGO_ENABLED=0 go build -o fupan ./cmd/fupan
 
-# 本地开发：后端 dev 模式（不 embed）+ 前端 vite
+# 本地开发：显式 NoAuth + loopback；前端 vite 可另开终端运行
 dev:
-	go run ./cmd/fupan -dev
+	FUPAN_NO_AUTH=1 FUPAN_ADDR=127.0.0.1:8080 go run ./cmd/fupan -dev
 
 test:
 	go test ./...

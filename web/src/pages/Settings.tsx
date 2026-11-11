@@ -23,8 +23,8 @@ export default function Settings() {
   const [error, setError] = useState("");
   const [chatPreset, setChatPreset] = useState("custom");
   const [embedPreset, setEmbedPreset] = useState("custom");
-  const [testResult, setTestResult] = useState<{ chat?: string; embed?: string }>({});
-  const [testing, setTesting] = useState<"chat" | "embed" | null>(null);
+  const [testResult, setTestResult] = useState<{ chat?: string; embed?: string; search?: string }>({});
+  const [testing, setTesting] = useState<"chat" | "embed" | "search" | null>(null);
 
   useEffect(() => {
     api.getSettings().then(setS).catch((e) => setError(e.message));
@@ -88,7 +88,7 @@ export default function Settings() {
     }));
   };
 
-  const test = async (target: "chat" | "embed") => {
+  const test = async (target: "chat" | "embed" | "search") => {
     setTesting(target);
     setTestResult((t) => ({ ...t, [target]: "" }));
     try {
@@ -176,6 +176,37 @@ export default function Settings() {
         )}
         <p className="text-xs text-faint">
           推荐：对话走 DeepSeek / 智谱云端，嵌入走 Ollama bge-m3 本地（数据不出机器）。维度改动需重启服务并清理旧向量。
+        </p>
+      </section>
+
+      <section className="mt-4 space-y-4 rounded-xl border border-line bg-card p-5">
+        <h3 className="text-sm font-bold text-ink">联网搜索（Agent 质疑/核实用，可选）</h3>
+        {presetRow(
+          {
+            off: { label: "关闭" },
+            tavily: { label: "Tavily（免费 1000 次/月）" },
+            bocha: { label: "博查（国内直连）" },
+          },
+          s["search.provider"] || "off",
+          (k) => setS((prev) => ({ ...prev, "search.provider": k === "off" ? "" : k }))
+        )}
+        {field("search.api_key", "搜索 API Key", "tvly-…", "password")}
+        {field("search.daily_limit", "每日搜索次数上限（免费额度内自控）", "10")}
+        <button
+          onClick={() => test("search")}
+          disabled={testing === "search"}
+          className="rounded-md border border-line px-3 py-1.5 text-xs text-ink hover:border-ink-soft disabled:opacity-50"
+        >
+          {testing === "search" ? "测试中…" : "测试联网搜索"}
+        </button>
+        {testResult.search && (
+          <p className={`text-xs ${testResult.search.startsWith("✓") ? "text-ink" : "text-seal"}`}>
+            {testResult.search}
+          </p>
+        )}
+        <p className="text-xs text-faint">
+          关闭时 Agent 复习照常，只是没有联网工具。Tavily 在 app.tavily.com 注册即得 Key（免费档无需绑卡）；
+          达到每日上限后 agent 会收到额度提示，配置自己的 Key 可继续用。
         </p>
       </section>
 

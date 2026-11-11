@@ -32,13 +32,40 @@ func NewClient(cfg Config) *Client {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 60 * time.Second
 	}
-	return &Client{cfg: cfg, hc: &http.Client{Timeout: cfg.Timeout}}
+	return &Client{cfg: cfg, hc: &http.Client{
+		Timeout: cfg.Timeout,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}}
 }
 
-// Message 对话消息。
+// ToolCall 助手消息中的工具调用请求（OpenAI 兼容格式）。
+type ToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"` // 固定 "function"
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"` // JSON 字符串
+	} `json:"function"`
+}
+
+// ToolDef 注册给模型的功能描述（OpenAI 兼容 tools 字段）。
+type ToolDef struct {
+	Type     string `json:"type"` // 固定 "function"
+	Function struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		Parameters  json.RawMessage `json:"parameters"` // JSON Schema
+	} `json:"function"`
+}
+
+// Message 对话消息。tool 角色（工具结果）必须带 ToolCallID。
 type Message struct {
-	Role    string `json:"role"` // system | user | assistant
-	Content string `json:"content"`
+	Role       string     `json:"role"` // system | user | assistant | tool
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
 }
 
 // ChatRequest 对话请求。
@@ -46,15 +73,14 @@ type ChatRequest struct {
 	Model       string    `json:"model"`
 	Messages    []Message `json:"messages"`
 	Temperature float64   `json:"temperature,omitempty"`
+	Tools       []ToolDef `json:"tools,omitempty"`
 	// ResponseJSON 请求 JSON 输出（OpenAI 兼容 response_format）。
 	ResponseJSON bool `json:"-"`
 }
 
 type chatResponse struct {
 	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
+		Message Message `json:"message"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -63,6 +89,15 @@ type chatResponse struct {
 
 // Chat 调用 /chat/completions，返回助手回复文本。
 func (c *Client) Chat(ctx context.Context, req ChatRequest) (string, error) {
+	msg, err := c.ChatMessage(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return msg.Content, nil
+}
+
+// ChatMessage 调用 /chat/completions，返回完整助手消息（可能携带 tool_calls）。
+func (c *Client) ChatMessage(ctx context.Context, req ChatRequest) (*Message, error) {
 	model := req.Model
 	if model == "" {
 		model = c.cfg.ChatModel
@@ -82,15 +117,16 @@ func (c *Client) Chat(ctx context.Context, req ChatRequest) (string, error) {
 
 	var resp chatResponse
 	if err := c.post(ctx, "/chat/completions", body, &resp); err != nil {
-		return "", err
+		return nil, err
 	}
 	if resp.Error != nil {
-		return "", fmt.Errorf("LLM 返回错误: %s", resp.Error.Message)
+		return nil, fmt.Errorf("LLM 返回错误: %s", resp.Error.Message)
 	}
 	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("LLM 未返回任何选择")
+		return nil, fmt.Errorf("LLM 未返回任何选择")
 	}
-	return resp.Choices[0].Message.Content, nil
+	msg := resp.Choices[0].Message
+	return &msg, nil
 }
 
 type embedRequest struct {
@@ -100,7 +136,7 @@ type embedRequest struct {
 
 type embedResponse struct {
 	Data []struct {
-		Index    int       `json:"index"`
+		Index     int       `json:"index"`
 		Embedding []float32 `json:"embedding"`
 	} `json:"data"`
 	Error *struct {

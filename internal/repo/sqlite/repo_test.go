@@ -219,3 +219,123 @@ func TestSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("设置回读错误: %v, %q", err, v)
 	}
 }
+
+func TestCardManage(t *testing.T) {
+	_, s := testStore(t)
+	ctx := context.Background()
+	seedLibrary(t, s, "l1", "考研库")
+	if err := s.CreateDocument(ctx, &domain.Document{ID: "d1", LibraryID: "l1", Title: "笔记", Format: "md", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.InsertChunks(ctx, []domain.Chunk{{ID: "c1", DocID: "d1", Kind: domain.ChunkChild, Content: "内容", Author: domain.AuthorUser, Version: 1, CreatedAt: time.Now()}}); err != nil {
+		t.Fatal(err)
+	}
+	card := func(id, cat string) domain.Card {
+		return domain.Card{ID: id, LibraryID: "l1", Front: "问" + id, Back: "答", Type: domain.CardQA,
+			Category: cat, SourceChunkID: "c1", SourceVersion: 1, Status: "active", CreatedAt: time.Now()}
+	}
+	if err := s.CreateCards(ctx, []domain.Card{card("a", "损失函数"), card("b", "优化器"), card("c", "损失函数")}); err != nil {
+		t.Fatal(err)
+	}
+
+	// 分类过滤。
+	got, err := s.ListCards(ctx, "l1", "损失函数")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("分类过滤错误: %v, %d 张", err, len(got))
+	}
+	all, err := s.ListCards(ctx, "l1", "")
+	if err != nil || len(all) != 3 {
+		t.Fatalf("全量列表错误: %v, %d 张", err, len(all))
+	}
+
+	// 编辑：改正面 + 改分类。
+	a, _ := s.GetCard(ctx, "a")
+	a.Front = "改后的问题"
+	a.Category = "新分类"
+	if err := s.UpdateCard(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	a2, _ := s.GetCard(ctx, "a")
+	if a2.Front != "改后的问题" || a2.Category != "新分类" {
+		t.Fatalf("UpdateCard 未生效: %+v", a2)
+	}
+	if err := s.UpdateCard(ctx, &domain.Card{ID: "不存在"}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("更新不存在卡片应 ErrNotFound, got %v", err)
+	}
+
+	// 软删后列表不可见，GetCard 仍可读。
+	if err := s.ArchiveCard(ctx, "b"); err != nil {
+		t.Fatal(err)
+	}
+	all, _ = s.ListCards(ctx, "l1", "")
+	if len(all) != 2 {
+		t.Fatalf("归档后应剩 2 张, got %d", len(all))
+	}
+	if _, err := s.GetCard(ctx, "b"); err != nil {
+		t.Fatalf("归档卡片应仍可读: %v", err)
+	}
+	if err := s.ArchiveCard(ctx, "b"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("重复归档应 ErrNotFound, got %v", err)
+	}
+}
+
+func TestListAllRandomAndHistory(t *testing.T) {
+	_, s := testStore(t)
+	ctx := context.Background()
+	seedLibrary(t, s, "l1", "考研库")
+	if err := s.CreateDocument(ctx, &domain.Document{ID: "d1", LibraryID: "l1", Title: "笔记", Format: "md", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.InsertChunks(ctx, []domain.Chunk{{ID: "c1", DocID: "d1", Kind: domain.ChunkChild, Content: "内容", Author: domain.AuthorUser, Version: 1, CreatedAt: time.Now()}}); err != nil {
+		t.Fatal(err)
+	}
+	card := func(id, cat string) domain.Card {
+		return domain.Card{ID: id, LibraryID: "l1", Front: "问" + id, Back: "答", Type: domain.CardQA,
+			Category: cat, SourceChunkID: "c1", SourceVersion: 1, Status: "active", CreatedAt: time.Now()}
+	}
+	if err := s.CreateCards(ctx, []domain.Card{card("a", "损失函数"), card("b", "优化器"), card("c", "")}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for i, id := range []string{"a", "b", "c"} {
+		if err := s.UpsertSchedule(ctx, &domain.Schedule{
+			CardID: id, State: domain.StateReview, Due: now.AddDate(0, 0, i+1), Reps: 1,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// ListAllCards：全部 3 张（含未到期）。
+	all, scheds, err := s.ListAllCards(ctx, "l1")
+	if err != nil || len(all) != 3 || len(scheds) != 3 {
+		t.Fatalf("ListAllCards 错误: %v, %d 张 %d 调度", err, len(all), len(scheds))
+	}
+
+	// ListRandomCards：全量与分类过滤，limit 生效。
+	got, err := s.ListRandomCards(ctx, "l1", "", 2)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("随机抽卡错误: %v, %d 张", err, len(got))
+	}
+	byCat, err := s.ListRandomCards(ctx, "l1", "损失函数", 10)
+	if err != nil || len(byCat) != 1 || byCat[0].ID != "a" {
+		t.Fatalf("分类随机抽卡错误: %v, %+v", err, byCat)
+	}
+
+	// ReviewDailyHistory：插两条复习记录（1 记住 1 忘记），聚合应 2 次 / 记住 1。
+	logs := []domain.ReviewLog{
+		{ID: "rl1", CardID: "a", Rating: 3, ReviewedAt: now},
+		{ID: "rl2", CardID: "a", Rating: 1, ReviewedAt: now},
+	}
+	for i := range logs {
+		if err := s.InsertReviewLog(ctx, &logs[i]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hist, err := s.ReviewDailyHistory(ctx, "l1", now.AddDate(0, 0, -1))
+	if err != nil || len(hist) != 1 {
+		t.Fatalf("复习历史错误: %v, %+v", err, hist)
+	}
+	if hist[0].Reviews != 2 || hist[0].Good != 1 {
+		t.Fatalf("复习历史聚合错误: reviews=%d good=%d", hist[0].Reviews, hist[0].Good)
+	}
+}

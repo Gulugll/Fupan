@@ -10,22 +10,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Gulugll/fupan/internal/config"
-	"github.com/Gulugll/fupan/internal/vector"
+	"github.com/gin-gonic/gin"
 )
 
 // testApp 组装：内存级 SQLite（临时目录）+ Noop 向量库（不连 Milvus）。
 func testApp(t *testing.T) (*App, *gin.Engine) {
 	t.Setenv("FUPAN_VECTOR_DISABLED", "1")
-	cfg := &config.Config{Dev: true, DataDir: t.TempDir(), Retention: 0.9, DailyNewLimit: 20, EmbedDim: 2}
+	cfg := &config.Config{Dev: true, DataDir: t.TempDir(), NoAuth: true, Retention: 0.9, DailyNewLimit: 20, EmbedDim: 2}
 	app, err := newApp(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.vectors = vector.NoopStore{}
-	app.importSvc.SetVectorStore(app.vectors)
-	t.Cleanup(func() { app.db.Close() })
+	t.Cleanup(func() { _ = app.Close() })
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -47,9 +44,18 @@ func multipartUpload(t *testing.T, filename, content string) *http.Request {
 	}
 	_, _ = fw.Write([]byte(content))
 	_ = mw.Close()
-	req := httptest.NewRequest(http.MethodPost, "/api/x", &buf)
+	req := newTestRequest(http.MethodPost, "/api/x", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	return req
+}
+
+func TestDeleteMissingDocumentReturns404(t *testing.T) {
+	_, r := testApp(t)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, newTestRequest(http.MethodDelete, "/api/documents/missing", nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("删除不存在文档状态码 = %d, 期望 404", w.Code)
+	}
 }
 
 func TestLibraryAndDocumentAPI(t *testing.T) {
@@ -58,7 +64,7 @@ func TestLibraryAndDocumentAPI(t *testing.T) {
 	// 建库。
 	w := httptest.NewRecorder()
 	body, _ := json.Marshal(map[string]string{"name": "考研库", "description": "政治+数学"})
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/libraries", bytes.NewReader(body)))
+	r.ServeHTTP(w, newTestRequest(http.MethodPost, "/api/libraries", bytes.NewReader(body)))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("建库失败: %d %s", w.Code, w.Body.String())
 	}
@@ -71,7 +77,7 @@ func TestLibraryAndDocumentAPI(t *testing.T) {
 
 	// 列表。
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/libraries", nil))
+	r.ServeHTTP(w, newTestRequest(http.MethodGet, "/api/libraries", nil))
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "考研库") {
 		t.Fatalf("列表失败: %d %s", w.Code, w.Body.String())
 	}
@@ -81,7 +87,7 @@ func TestLibraryAndDocumentAPI(t *testing.T) {
 		"## 第一章\n\n" + strings.Repeat("这是第一章的内容，讲了机器学习的基础概念与常见术语，包括样本特征标签模型假设空间与经验风险等。", 4) + "\n\n" +
 		"## 第二章\n\n" + strings.Repeat("第二章讲进阶内容，深入讨论了泛化误差的界定、正则化技术以及交叉验证在模型选择中的实际应用方法。", 4) + "\n"
 	w = httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/libraries/"+libID+"/documents", nil)
+	req := newTestRequest(http.MethodPost, "/api/libraries/"+libID+"/documents", nil)
 	// multipart 构造。
 	req = multipartUpload(t, "sample.md", md)
 	req.URL.Path = "/api/libraries/" + libID + "/documents"
@@ -97,7 +103,7 @@ func TestLibraryAndDocumentAPI(t *testing.T) {
 
 	// 文档详情含 chunks。
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/documents/"+doc["id"].(string), nil))
+	r.ServeHTTP(w, newTestRequest(http.MethodGet, "/api/documents/"+doc["id"].(string), nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("详情失败: %d %s", w.Code, w.Body.String())
 	}
@@ -107,7 +113,7 @@ func TestLibraryAndDocumentAPI(t *testing.T) {
 
 	// 删除文档。
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/api/documents/"+doc["id"].(string), nil))
+	r.ServeHTTP(w, newTestRequest(http.MethodDelete, "/api/documents/"+doc["id"].(string), nil))
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("删除失败: %d", w.Code)
 	}
@@ -130,7 +136,7 @@ func createLib(t *testing.T, r *gin.Engine) string {
 	t.Helper()
 	w := httptest.NewRecorder()
 	body, _ := json.Marshal(map[string]string{"name": "测试库"})
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/libraries", bytes.NewReader(body)))
+	r.ServeHTTP(w, newTestRequest(http.MethodPost, "/api/libraries", bytes.NewReader(body)))
 	var lib map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &lib)
 	return lib["id"].(string)

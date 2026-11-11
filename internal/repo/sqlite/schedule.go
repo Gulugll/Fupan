@@ -57,8 +57,13 @@ func (s *store) ListNewCards(ctx context.Context, libraryID string) ([]domain.Ca
 	return s.listCardsBySched(ctx, libraryID, `AND s.state = 'new'`)
 }
 
+// ListAllCards 全部 active 卡片（含未到期与新卡），自由复习模式的数据源。
+func (s *store) ListAllCards(ctx context.Context, libraryID string) ([]domain.Card, []domain.Schedule, error) {
+	return s.listCardsBySched(ctx, libraryID, ``)
+}
+
 func (s *store) listCardsBySched(ctx context.Context, libraryID, extra string, args ...any) ([]domain.Card, []domain.Schedule, error) {
-	base := `SELECT c.id,c.library_id,c.front,c.back,c.type,c.source_chunk_id,c.source_version,c.status,c.created_at,
+	base := `SELECT c.id,c.library_id,c.front,c.back,c.type,c.category,c.source_chunk_id,c.source_version,c.status,c.created_at,
 	         s.card_id,s.state,s.due,s.stability,s.difficulty,s.elapsed_days,s.scheduled_days,s.reps,s.lapses,s.introduced_date
 	         FROM cards c JOIN schedules s ON s.card_id = c.id
 	         WHERE c.library_id = ? AND c.status = 'active' ` + extra + ` ORDER BY s.due`
@@ -73,7 +78,7 @@ func (s *store) listCardsBySched(ctx context.Context, libraryID, extra string, a
 		var c domain.Card
 		var sc domain.Schedule
 		var typ, cts, state, due string
-		if err := rows.Scan(&c.ID, &c.LibraryID, &c.Front, &c.Back, &typ, &c.SourceChunkID, &c.SourceVersion, &c.Status, &cts,
+		if err := rows.Scan(&c.ID, &c.LibraryID, &c.Front, &c.Back, &typ, &c.Category, &c.SourceChunkID, &c.SourceVersion, &c.Status, &cts,
 			&sc.CardID, &state, &due, &sc.Stability, &sc.Difficulty, &sc.ElapsedDays, &sc.ScheduledDays, &sc.Reps, &sc.Lapses, &sc.IntroducedDate); err != nil {
 			return nil, nil, err
 		}
@@ -142,9 +147,26 @@ func (s *store) CountCardsByState(ctx context.Context, libraryID string) (map[st
 	return out, rows.Err()
 }
 
-func (s *store) InsertReviewLog(ctx context.Context, log *domain.ReviewLog) error {
-	_, err := s.q.ExecContext(ctx,
-		`INSERT INTO review_logs(id, card_id, rating, reviewed_at) VALUES(?,?,?,?)`,
-		log.ID, log.CardID, log.Rating, log.ReviewedAt.Format(time.RFC3339))
-	return err
+// ReviewDailyHistory 按天聚合复习次数与记住次数。reviewed_at 以 RFC3339 文本存储，
+// 统一时区下 substr(reviewed_at,1,10) 即本地日期（与 DueDayHistogram 同约定）。
+func (s *store) ReviewDailyHistory(ctx context.Context, libraryID string, since time.Time) ([]domain.DayReview, error) {
+	rows, err := s.q.QueryContext(ctx,
+		`SELECT substr(r.reviewed_at, 1, 10) AS d, COUNT(*), SUM(CASE WHEN r.rating >= 3 THEN 1 ELSE 0 END)
+		 FROM review_logs r JOIN cards c ON c.id = r.card_id
+		 WHERE c.library_id = ? AND r.reviewed_at >= ?
+		 GROUP BY d ORDER BY d`,
+		libraryID, since.Format(time.RFC3339))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.DayReview
+	for rows.Next() {
+		var dr domain.DayReview
+		if err := rows.Scan(&dr.Date, &dr.Reviews, &dr.Good); err != nil {
+			return nil, err
+		}
+		out = append(out, dr)
+	}
+	return out, rows.Err()
 }

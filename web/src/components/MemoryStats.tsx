@@ -15,6 +15,10 @@ export default function MemoryStats({ libId }: { libId: string }) {
   if (!st) return <p className="text-xs text-faint">正在加载统计……</p>;
 
   const maxCount = Math.max(1, ...st.forecast.map((d) => d.count));
+  const maxHist = Math.max(1, ...(st.history ?? []).map((d) => d.reviews));
+  const histGood = (st.history ?? []).reduce((s, d) => s + d.good, 0);
+  const histTotal = (st.history ?? []).reduce((s, d) => s + d.reviews, 0);
+  const accuracy = histTotal > 0 ? Math.round((histGood / histTotal) * 100) : null;
   const today = new Date();
   const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
 
@@ -65,6 +69,30 @@ export default function MemoryStats({ libId }: { libId: string }) {
           ))}
         </div>
       </div>
+
+      {/* 近 30 天复习历史（遗忘曲线面板）：柱高=复习量，tooltip 含当日正确率 */}
+      {(st.history?.length ?? 0) > 0 && (
+        <div className="mt-5 border-t border-dashed border-line pt-4">
+          <p className="mb-2 flex items-center justify-between text-[11px] tracking-widest text-faint">
+            <span>近 30 天复习</span>
+            {accuracy !== null && <span>记住率 {accuracy}%</span>}
+          </p>
+          <div className="flex h-20 items-end gap-[2px]">
+            {st.history.map((d) => (
+              <div
+                key={d.date}
+                className="flex-1 rounded-t bg-[#5a6f4e]/60 transition-all hover:bg-[#5a6f4e]"
+                style={{ height: `${Math.max(3, (d.reviews / maxHist) * 56)}px` }}
+                title={`${d.date}：${d.reviews} 次${d.reviews > 0 ? `，记住 ${Math.round((d.good / d.reviews) * 100)}%` : ""}`}
+              />
+            ))}
+          </div>
+          <div className="mt-1 flex justify-between text-[10px] text-faint">
+            <span>{st.history[0]?.date.slice(5)}</span>
+            <span>今天</span>
+          </div>
+        </div>
+      )}
 
       {/* 卡片状态分布 */}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-dashed border-line pt-4">

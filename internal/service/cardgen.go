@@ -27,6 +27,7 @@ func NewCardService(store repo.Store, settings *SettingsService) *CardService {
 type PreviewCard struct {
 	Front         string `json:"front"`
 	Back          string `json:"back"`
+	Category      string `json:"category"`
 	SourceChunkID string `json:"source_chunk_id"`
 	TitlePath     string `json:"title_path"`
 	DocTitle      string `json:"doc_title"`
@@ -35,6 +36,7 @@ type PreviewCard struct {
 type CommitCard struct {
 	Front         string `json:"front" binding:"required"`
 	Back          string `json:"back" binding:"required"`
+	Category      string `json:"category"`
 	SourceChunkID string `json:"source_chunk_id" binding:"required"`
 }
 
@@ -53,14 +55,9 @@ func (s *CardService) Preview(ctx context.Context, libraryID string, chunkIDs []
 	var out []PreviewCard
 	var errs []string
 	for _, chunkID := range chunkIDs {
-		chunk, err := s.store.GetChunk(ctx, chunkID)
+		chunk, doc, err := chunkAndDocument(ctx, s.store, chunkID, libraryID)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("切片 %s 不存在", chunkID))
-			continue
-		}
-		doc, err := s.store.GetDocument(ctx, chunk.DocID)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("切片 %s 的文档不存在", chunkID))
+			errs = append(errs, err.Error())
 			continue
 		}
 		var parentContent string
@@ -76,12 +73,27 @@ func (s *CardService) Preview(ctx context.Context, libraryID string, chunkIDs []
 		}
 		for _, d := range drafts {
 			out = append(out, PreviewCard{
-				Front: d.Front, Back: d.Back,
+				Front: d.Front, Back: d.Back, Category: d.Category,
 				SourceChunkID: chunk.ID, TitlePath: chunk.TitlePath, DocTitle: doc.Title,
 			})
 		}
 	}
 	return out, errs, nil
+}
+
+func chunkAndDocument(ctx context.Context, store repo.Store, chunkID, libraryID string) (*domain.Chunk, *domain.Document, error) {
+	chunk, err := store.GetChunk(ctx, chunkID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("切片 %s 不存在", chunkID)
+	}
+	doc, err := store.GetDocument(ctx, chunk.DocID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("切片 %s 的文档不存在", chunkID)
+	}
+	if doc.LibraryID != libraryID {
+		return nil, nil, fmt.Errorf("切片 %s 不属于知识库 %s", chunkID, libraryID)
+	}
+	return chunk, doc, nil
 }
 
 // Commit 将用户勾选的草稿落库：卡片 + 初始调度（state=new, due=now）单事务写入。
@@ -93,10 +105,9 @@ func (s *CardService) Commit(ctx context.Context, libraryID string, cards []Comm
 	created := make([]domain.Card, 0, len(cards))
 	err := s.store.Tx(ctx, func(ts repo.Store) error {
 		for _, c := range cards {
-			// 溯源校验：chunk 必须存在（外键兜底 + 显式校验给出可读错误）。
-			chunk, err := ts.GetChunk(ctx, c.SourceChunkID)
+			chunk, _, err := chunkAndDocument(ctx, ts, c.SourceChunkID, libraryID)
 			if err != nil {
-				return fmt.Errorf("溯源切片 %s 不存在，已拒绝入库", c.SourceChunkID)
+				return fmt.Errorf("溯源校验失败，已拒绝入库: %w", err)
 			}
 			card := domain.Card{
 				ID:            uuid.NewString(),
@@ -104,6 +115,7 @@ func (s *CardService) Commit(ctx context.Context, libraryID string, cards []Comm
 				Front:         c.Front,
 				Back:          c.Back,
 				Type:          domain.CardQA,
+				Category:      c.Category,
 				SourceChunkID: chunk.ID,
 				SourceVersion: chunk.Version,
 				Status:        "active",

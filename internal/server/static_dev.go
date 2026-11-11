@@ -7,7 +7,7 @@ import (
 )
 
 // registerStatic dev 构建标签：不 embed 前端（开发时由 Vite 提供页面）。
-func registerStatic(r *gin.Engine, cfgDev bool) {
+func registerStatic(r *gin.Engine, cfgDev bool, _ *App) {
 	if cfgDev {
 		return
 	}

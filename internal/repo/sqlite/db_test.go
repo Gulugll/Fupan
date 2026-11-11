@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/Gulugll/fupan/internal/repo"
@@ -49,4 +50,74 @@ func TestSourceChunkForeignKeyEnforced(t *testing.T) {
 
 func TestImplementsRepoStore(t *testing.T) {
 	var _ repo.Store = (*store)(nil)
+}
+
+// 迁移幂等：文件库二次打开（模拟程序重启）不能因 ALTER TABLE 报错，
+// 且旧库（无 schema_migrations 记录）升级后 category 列可用。
+func TestMigrateIdempotentOnReopen(t *testing.T) {
+	path := t.TempDir() + "/fupan.db"
+
+	for i := 0; i < 2; i++ {
+		d, err := Open(path)
+		if err != nil {
+			t.Fatalf("第 %d 次打开失败: %v", i+1, err)
+		}
+		if _, err := d.db.Exec(`SELECT category FROM cards LIMIT 1`); err != nil {
+			t.Fatalf("第 %d 次打开后 category 列不可用: %v", i+1, err)
+		}
+		d.Close()
+	}
+}
+
+func TestMigrateLegacyCategoryWithoutMigrationRecord(t *testing.T) {
+	path := t.TempDir() + "/fupan.db"
+	d, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.db.Exec(`DELETE FROM schema_migrations WHERE name='0002_card_category.sql'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+	d, err = Open(path)
+	if err != nil {
+		t.Fatalf("已有 category 但无迁移记录的旧库应可升级: %v", err)
+	}
+	d.Close()
+}
+
+func TestMigrationRollsBackAtomically(t *testing.T) {
+	d, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	d.SetMaxOpenConns(1)
+	if _, err := d.Exec(`CREATE TABLE schema_migrations(name TEXT PRIMARY KEY)`); err != nil {
+		t.Fatal(err)
+	}
+
+	bad := []byte(`CREATE TABLE migration_probe(id TEXT PRIMARY KEY); THIS IS INVALID SQL;`)
+	if err := applyMigration(d, "bad.sql", bad); err == nil {
+		t.Fatal("错误迁移应返回失败")
+	}
+	var count int
+	if err := d.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='migration_probe'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatal("失败迁移中的 DDL 应回滚")
+	}
+	if err := d.QueryRow(`SELECT COUNT(*) FROM schema_migrations WHERE name='bad.sql'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatal("失败迁移不应留下迁移记录")
+	}
+
+	if err := applyMigration(d, "bad.sql", []byte(`CREATE TABLE migration_probe(id TEXT PRIMARY KEY);`)); err != nil {
+		t.Fatalf("同名迁移回滚后应可安全重试: %v", err)
+	}
 }

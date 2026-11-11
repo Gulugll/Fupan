@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
-import { api, Library } from "../api/client";
+import { api, Library, Me } from "../api/client";
 
 // 品牌印章：方形朱红印章内嵌「磐」字（视觉锚点，全站唯一装饰重笔）。
 function SealMark() {
@@ -14,6 +14,7 @@ function SealMark() {
 // 全局布局：左侧知识库目录（纸质书脊感）+ 内容区。
 export default function Layout() {
   const [libs, setLibs] = useState<Library[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const navigate = useNavigate();
@@ -22,7 +23,13 @@ export default function Layout() {
   const load = () => api.listLibraries().then(setLibs).catch(() => {});
   useEffect(() => {
     load();
+    api.me().then(setMe).catch(() => {});
   }, []);
+
+  const logout = async () => {
+    await api.logout();
+    window.location.assign("/auth/logged-out");
+  };
 
   const create = async () => {
     if (!name.trim()) return;
@@ -106,6 +113,24 @@ export default function Layout() {
           >
             设置
           </NavLink>
+          {me && (
+            <div className="space-y-1.5 pt-2 text-center">
+              <p className="truncate text-xs text-ink-soft" title={me.display_name}>
+                当前用户：{me.display_name}
+              </p>
+              {!me.vector_enabled && (
+                <p className="text-[11px] leading-4 text-faint">向量功能已禁用，语义检索与嵌入测试不可用</p>
+              )}
+              {me.id !== "local" && (
+                <button
+                  onClick={() => void logout()}
+                  className="w-full rounded-md py-1 text-xs text-faint hover:text-ink"
+                >
+                  退出登录
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
