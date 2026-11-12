@@ -10,7 +10,7 @@ import (
 )
 
 func (a *App) login(c *gin.Context) {
-	loginURL, err := a.oidc.StartLogin(c.Request.Context(), c.Query("return_to"))
+	loginURL, err := a.oidc.StartLogin(c.Request.Context(), c.Query("return_to"), c.Query("prompt") == "login")
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, auth.ErrInvalidReturnTo) {

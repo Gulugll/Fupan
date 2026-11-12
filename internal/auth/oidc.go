@@ -55,7 +55,9 @@ func NewOIDC(ctx context.Context, control *Control, cfg OIDCConfig) (*OIDCServic
 }
 
 // StartLogin 创建短时一次性 state，并返回带 PKCE S256 的授权 URL。
-func (s *OIDCService) StartLogin(ctx context.Context, returnTo string) (string, error) {
+// forceReauth=true 时附加 prompt=login：即使 SSO 会话仍有效也强制显示登录表单，
+// 用于「退出登录」后允许切换账号（否则会被 SSO 会话自动登录回来）。
+func (s *OIDCService) StartLogin(ctx context.Context, returnTo string, forceReauth ...bool) (string, error) {
 	if err := ValidateReturnTo(returnTo); err != nil {
 		return "", err
 	}
@@ -83,7 +85,11 @@ func (s *OIDCService) StartLogin(ctx context.Context, returnTo string) (string, 
 		VALUES(?, ?, ?, ?, ?)`, hashValue(state), nonce, verifier, returnTo, now.Add(stateTTL)); err != nil {
 		return "", fmt.Errorf("保存 OIDC state 失败: %w", err)
 	}
-	return s.oauthConfig.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)), nil
+	opts := []oauth2.AuthCodeOption{oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)}
+	if len(forceReauth) > 0 && forceReauth[0] {
+		opts = append(opts, oauth2.SetAuthURLParam("prompt", "login"))
+	}
+	return s.oauthConfig.AuthCodeURL(state, opts...), nil
 }
 
 // CallbackResult 包含 HTTP 登录完成所需的会话与跳转信息。

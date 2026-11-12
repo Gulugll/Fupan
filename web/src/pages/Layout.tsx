@@ -30,7 +30,8 @@ export default function Layout() {
 
   const logout = async () => {
     await api.logout();
-    window.location.assign("/auth/login");
+    // prompt=login：强制 Casdoor 显示登录表单（SSO 会话仍在也可换账号）
+    window.location.assign("/auth/login?prompt=login");
   };
 
   const create = async () => {
