@@ -1,18 +1,78 @@
 @import "tailwindcss";
 
-/* 复磐主题令牌：宣纸米白 / 墨色 / 印章朱红 / 荧光笔黄。
-   标题用宋体系衬线（纸质学习感），正文系统黑体保证可读性。 */
-@theme {
-  --color-paper: #f6f3ec;      /* 页面底色：宣纸 */
-  --color-card: #fffdf8;       /* 卡片：更亮的纸 */
-  --color-ink: #2b2723;        /* 墨色正文 */
-  --color-ink-soft: #6e655a;   /* 淡墨辅助文字 */
-  --color-faint: #a39a8c;      /* 极淡注释 */
-  --color-seal: #b5432a;       /* 印章朱红：品牌与强调 */
-  --color-seal-deep: #93341f;
-  --color-mark: #f3e3ae;       /* 荧光笔黄：溯源高亮 */
-  --color-line: #e4ddcf;       /* 纸面细线 */
+/* 复磐主题令牌：CSS 变量双主题（纸感书房 / 深色专注）。
+   Tailwind v4 @theme inline 映射运行时变量，组件只用语义色名，不写死颜色。
+   白天=v1 纸感书房；夜间=v3 深色专注。切换挂在 <html data-theme> 上。 */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-side: var(--side);
+  --color-hover: var(--hover);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-faint: var(--faint);
+  --color-seal: var(--seal);
+  --color-seal-deep: var(--seal-deep);
+  --color-mark: var(--mark);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --font-display: Georgia, "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
+}
+
+:root {
+  --paper: #f5f3ec;
+  --card: #fffefb;
+  --side: #f1ede3;
+  --hover: #e9e4d7;
+  --ink: #24272e;
+  --ink-soft: #6b7180;
+  --faint: #a39a8c;
+  --seal: #b5402f;
+  --seal-deep: #93341f;
+  --mark: #f3e3ae;
+  --line: #e0dcd0;
+  --accent: #2b4c9b;
+  --accent-soft: #e9eef9;
+}
+
+[data-theme="dark"] {
+  --paper: #0d1117;
+  --card: #161b22;
+  --side: #010409;
+  --hover: #161b27;
+  --ink: #e6edf3;
+  --ink-soft: #8b949e;
+  --faint: #6b7684;
+  --seal: #f0a35e;
+  --seal-deep: #d98b45;
+  --mark: #3d3520;
+  --line: #21262d;
+  --accent: #7c6ff0;
+  --accent-soft: #1b1f33;
+}
+
+/* 夜间进度条渐变 */
+[data-theme="dark"] .deck-progress i {
+  background: linear-gradient(90deg, #7c6ff0, #4fa3ff) !important;
+}
+
+/* 库卡片：一叠纸卡的层叠边 */
+.deck-stack { position: relative; }
+.deck-stack::before {
+  content: "";
+  position: absolute;
+  inset: 6px -5px -6px 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--side);
+  z-index: 0;
+}
+.deck-stack > * { position: relative; }
+
+/* 夜间复习卡微光晕 */
+[data-theme="dark"] .review-glow {
+  background: radial-gradient(500px 200px at 80% 0%, rgba(124, 111, 240, 0.12), transparent 60%);
 }
 
 /* 实体翻卡：3D 翻转。

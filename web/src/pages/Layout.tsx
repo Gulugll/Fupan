@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { api, Library, Me } from "../api/client";
+import { useThemeMode } from "../theme";
 
 // 品牌印章：方形朱红印章内嵌「磐」字（视觉锚点，全站唯一装饰重笔）。
 function SealMark() {
@@ -19,6 +20,7 @@ export default function Layout() {
   const [name, setName] = useState("");
   const navigate = useNavigate();
   const { libId } = useParams();
+  const [themeMode, setThemeMode] = useThemeMode();
 
   const load = () => api.listLibraries().then(setLibs).catch(() => {});
   useEffect(() => {
@@ -43,14 +45,28 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-paper text-ink">
       {/* 侧栏：知识库目录 */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-[#f1ede3]">
-        <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-side">
+        <NavLink to="/" className="flex items-center gap-2.5 px-4 pb-4 pt-5">
           <SealMark />
           <div>
             <h1 className="font-display text-lg font-bold tracking-wide leading-tight">复磐</h1>
             <p className="text-[11px] text-faint">把笔记变成记忆的磐石</p>
           </div>
-        </div>
+        </NavLink>
+
+        <nav className="mx-2 mb-2 space-y-0.5">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `block rounded-md px-3 py-2 text-sm transition-colors ${
+                isActive ? "bg-accent-soft font-medium text-accent" : "text-ink-soft hover:bg-hover"
+              }`
+            }
+          >
+            ⌂ 首页总览
+          </NavLink>
+        </nav>
 
         <p className="px-4 pb-1 pt-2 text-[11px] tracking-widest text-faint">知 识 库</p>
         <nav className="flex-1 overflow-y-auto pb-2">
@@ -61,8 +77,8 @@ export default function Layout() {
               className={({ isActive }) =>
                 `mx-2 block truncate rounded-md px-3 py-2 text-sm transition-colors ${
                   isActive || libId === l.id
-                    ? "bg-card font-medium text-ink paper-shadow"
-                    : "text-ink-soft hover:bg-[#e9e4d7]"
+                    ? "bg-card font-medium text-accent paper-shadow"
+                    : "text-ink-soft hover:bg-hover"
                 }`
               }
             >
@@ -107,12 +123,24 @@ export default function Layout() {
             to="/settings"
             className={({ isActive }) =>
               `block rounded-md py-1.5 text-center text-sm ${
-                isActive ? "bg-[#e9e4d7] text-ink" : "text-faint hover:text-ink-soft"
+                isActive ? "bg-hover text-ink" : "text-faint hover:text-ink-soft"
               }`
             }
           >
             设置
           </NavLink>
+          <div className="flex items-center justify-between rounded-md border border-line px-2.5 py-1.5">
+            <span className="text-xs text-faint">外观</span>
+            <select
+              value={themeMode}
+              onChange={(e) => setThemeMode(e.target.value as typeof themeMode)}
+              className="bg-transparent text-xs text-ink-soft focus:outline-none"
+            >
+              <option value="system">跟随系统</option>
+              <option value="light">白天 · 纸感</option>
+              <option value="dark">夜间 · 深色</option>
+            </select>
+          </div>
           {me && (
             <div className="space-y-1.5 pt-2 text-center">
               <p className="truncate text-xs text-ink-soft" title={me.display_name}>

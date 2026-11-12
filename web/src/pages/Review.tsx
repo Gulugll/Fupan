@@ -246,7 +246,7 @@ export default function Review() {
           {/* 正面：问题（短内容居中；长内容卡片自然生长，页面滚动） */}
           <button
             onClick={() => !flipped && flip()}
-            className="flip-face flex w-full cursor-pointer flex-col rounded-xl border border-line bg-card p-8 text-left paper-shadow focus-visible:outline-2 focus-visible:outline-seal"
+            className="flip-face review-glow flex w-full cursor-pointer flex-col rounded-xl border border-line bg-card p-8 text-left paper-shadow focus-visible:outline-2 focus-visible:outline-seal"
           >
             <span className="text-[11px] tracking-widest text-faint">问</span>
             <span className="flex min-h-0 flex-1 flex-col justify-center py-2">
@@ -258,7 +258,7 @@ export default function Review() {
           </button>
 
           {/* 背面：答案（结构化内容 Markdown 渲染，卡片自然生长） */}
-          <div className="flip-face flip-back flex w-full flex-col rounded-xl border border-line bg-card p-8 paper-shadow">
+          <div className="flip-face flip-back review-glow flex w-full flex-col rounded-xl border border-line bg-card p-8 paper-shadow">
             <span className="text-[11px] tracking-widest text-faint">答</span>
             <span className="block pt-3 text-sm leading-6 text-ink-soft">
               <Markdown text={card?.front ?? ""} inline className="text-sm" />

@@ -2,6 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import "./index.css";
+import { initTheme } from "./theme";
+
+initTheme();
 import Layout from "./pages/Layout";
 import LibraryHome from "./pages/LibraryHome";
 import LibraryDetail from "./pages/LibraryDetail";
