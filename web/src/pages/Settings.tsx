@@ -25,9 +25,11 @@ export default function Settings() {
   const [embedPreset, setEmbedPreset] = useState("custom");
   const [testResult, setTestResult] = useState<{ chat?: string; embed?: string; search?: string }>({});
   const [testing, setTesting] = useState<"chat" | "embed" | "search" | null>(null);
+  const [issuer, setIssuer] = useState("");
 
   useEffect(() => {
     api.getSettings().then(setS).catch((e) => setError(e.message));
+    api.me().then((m) => setIssuer(m.issuer ?? "")).catch(() => {});
   }, []);
 
   const field = (key: string, label: string, placeholder = "", type = "text") => (
@@ -209,6 +211,23 @@ export default function Settings() {
           达到每日上限后 agent 会收到额度提示，配置自己的 Key 可继续用。
         </p>
       </section>
+
+      {issuer && (
+        <section className="mt-4 space-y-3 rounded-xl border border-line bg-card p-5">
+          <h3 className="text-sm font-bold text-ink">账号与安全</h3>
+          <p className="text-xs text-faint">
+            修改密码、开启两步验证（2FA）等账号安全设置由统一登录中心（SSO）管理，点此直达：
+          </p>
+          <a
+            href={`${issuer}/account`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block rounded-md border border-line px-3 py-1.5 text-xs text-ink hover:border-ink-soft"
+          >
+            打开账号中心（改密码 / 开启 2FA）↗
+          </a>
+        </section>
+      )}
 
       <section className="mt-4 space-y-4 rounded-xl border border-line bg-card p-5">
         <h3 className="text-sm font-bold text-ink">复习参数</h3>
