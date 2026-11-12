@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -25,6 +26,7 @@ type OIDCConfig struct {
 
 type OIDCService struct {
 	control     *Control
+	issuer      string
 	oauthConfig oauth2.Config
 	verifier    *oidc.IDTokenVerifier
 	allowed     map[string]struct{}
@@ -42,6 +44,7 @@ func NewOIDC(ctx context.Context, control *Control, cfg OIDCConfig) (*OIDCServic
 	allowed[cfg.AdminSub] = struct{}{}
 	return &OIDCService{
 		control: control,
+		issuer:  cfg.Issuer,
 		oauthConfig: oauth2.Config{
 			ClientID: cfg.ClientID, ClientSecret: cfg.ClientSecret, RedirectURL: cfg.RedirectURL,
 			Endpoint: provider.Endpoint(), Scopes: []string{oidc.ScopeOpenID, "profile"},
@@ -117,7 +120,7 @@ func (s *OIDCService) CallbackWithResult(ctx context.Context, state, code, brows
 	if !ok || rawIDToken == "" {
 		return CallbackResult{}, fmt.Errorf("OIDC token 响应缺少 id_token")
 	}
-	idToken, err := s.verifier.Verify(ctx, rawIDToken)
+	idToken, err := s.verifyIDToken(ctx, rawIDToken)
 	if err != nil {
 		return CallbackResult{}, fmt.Errorf("验证 ID Token 失败: %w", err)
 	}
@@ -142,6 +145,26 @@ func (s *OIDCService) CallbackWithResult(ctx context.Context, state, code, brows
 		return CallbackResult{}, err
 	}
 	return CallbackResult{RawToken: rawSession, ExpiresAt: session.ExpiresAt, ReturnTo: loginState.returnTo, User: user}, nil
+}
+
+// verifyIDToken 验签失败时用全新 provider 刷新 JWKS 缓存重试一次。
+// 背景：长期持有的 verifier 会缓存公钥，issuer 端密钥轮换/缓存异常时旧缓存会导致
+// 签名验证持续失败；重建 provider 是最可靠的刷新方式（仅失败路径触发，开销可接受）。
+func (s *OIDCService) verifyIDToken(ctx context.Context, rawIDToken string) (*oidc.IDToken, error) {
+	idToken, err := s.verifier.Verify(ctx, rawIDToken)
+	if err == nil {
+		return idToken, nil
+	}
+	freshProvider, freshErr := oidc.NewProvider(ctx, s.issuer)
+	if freshErr != nil {
+		return nil, err
+	}
+	freshToken, freshVerifyErr := freshProvider.Verifier(&oidc.Config{ClientID: s.oauthConfig.ClientID}).Verify(ctx, rawIDToken)
+	if freshVerifyErr != nil {
+		return nil, err
+	}
+	log.Printf("OIDC JWKS 缓存刷新后验签通过（原错误: %v）", err)
+	return freshToken, nil
 }
 
 // ResolveSession 每次请求都重新检查当前白名单，撤销后立即拒绝旧会话。
