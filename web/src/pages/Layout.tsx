@@ -30,7 +30,7 @@ export default function Layout() {
 
   const logout = async () => {
     await api.logout();
-    window.location.assign("/auth/logged-out");
+    window.location.assign("/auth/login");
   };
 
   const create = async () => {
