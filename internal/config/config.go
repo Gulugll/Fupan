@@ -54,6 +54,7 @@ type OIDCConfig struct {
 	RedirectURL  string
 	AdminSub     string
 	AllowedSubs  []string
+	AllowAll     bool // FUPAN_ALLOW_ALL=true：任何注册用户均可登录（朋友开放模式）
 }
 
 // LLMConfig OpenAI 兼容协议接入配置。
@@ -112,6 +113,7 @@ func Load(configPath string) (*Config, error) {
 			RedirectURL:  strings.TrimSpace(os.Getenv(envPrefix + "REDIRECT_URL")),
 			AdminSub:     strings.TrimSpace(os.Getenv(envPrefix + "ADMIN_SUB")),
 			AllowedSubs:  splitSubs(os.Getenv(envPrefix + "ALLOWED_SUBS")),
+			AllowAll:    os.Getenv(envPrefix+"ALLOW_ALL") == "true",
 		},
 		LLM: LLMConfig{
 			BaseURL:    envOr("LLM_BASE_URL", defaultZhipuBaseURL),

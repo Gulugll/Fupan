@@ -22,6 +22,7 @@ type OIDCConfig struct {
 	RedirectURL  string
 	AdminSub     string
 	AllowedSubs  []string
+	AllowAll    bool // true = 任何 issuer 注册用户都可登录（开放给朋友用）；false = 白名单
 }
 
 type OIDCService struct {
@@ -30,6 +31,7 @@ type OIDCService struct {
 	oauthConfig oauth2.Config
 	verifier    *oidc.IDTokenVerifier
 	allowed     map[string]struct{}
+	allowAll    bool
 }
 
 func NewOIDC(ctx context.Context, control *Control, cfg OIDCConfig) (*OIDCService, error) {
@@ -51,6 +53,7 @@ func NewOIDC(ctx context.Context, control *Control, cfg OIDCConfig) (*OIDCServic
 		},
 		verifier: provider.Verifier(&oidc.Config{ClientID: cfg.ClientID}),
 		allowed:  allowed,
+		allowAll: cfg.AllowAll,
 	}, nil
 }
 
@@ -190,6 +193,9 @@ func (s *OIDCService) DeleteSession(ctx context.Context, rawToken string) error 
 }
 
 func (s *OIDCService) isAllowed(sub string) bool {
+	if s.allowAll {
+		return true
+	}
 	_, ok := s.allowed[sub]
 	return ok
 }

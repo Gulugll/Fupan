@@ -1,13 +1,15 @@
 <!-- ============================================================
   FuPan 复磐 · Casdoor 登录页左侧品牌面板
   用法：Casdoor 后台 → 应用(fupan) → UI Customization →
-       Form position 选「Enable side panel」→
+       Form position 选「Enable side panel」（formOffset=4）→
        Side panel HTML 粘贴本文件全部内容（含 <style>，允许）
-  预览里的浮动卡片为纯 CSS 动效，无需 JS/图片资源。
+  说明：新版 Casdoor 前端侧边栏容器宽 420px（lg 断点以上显示），
+       卡片由右侧表单撑高，本面板按 100% 高度自适应。
 ============================================================ -->
 <style>
 .fp-side {
-  position: absolute; inset: 0; overflow: hidden;
+  position: relative; width: 100%; height: 100%; min-height: 560px;
+  overflow: hidden;
   background: linear-gradient(150deg, #101A33 0%, #1B2A4A 45%, #2B4C9B 100%);
   color: #F7F6F1;
   font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
@@ -23,56 +25,58 @@
 }
 .fp-side::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(600px 400px at 80% 0%, rgba(94,130,210,0.28), transparent 65%);
+  background: radial-gradient(400px 300px at 80% 0%, rgba(94,130,210,0.28), transparent 65%);
 }
 .fp-side-inner {
   position: relative; z-index: 1; height: 100%;
   display: flex; flex-direction: column; justify-content: space-between;
-  padding: 56px 60px 40px;
+  padding: 36px 30px 28px;
 }
-.fp-brand { display: flex; align-items: center; gap: 14px; }
+.fp-brand { display: flex; align-items: center; gap: 12px; }
 .fp-seal {
-  width: 46px; height: 46px; border-radius: 12px;
+  width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0;
   background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.22);
   display: flex; align-items: center; justify-content: center;
   font-family: "Songti SC", "Noto Serif SC", STSong, serif;
-  font-size: 27px; font-weight: 700; color: #fff;
+  font-size: 25px; font-weight: 700; color: #fff;
 }
 .fp-wordmark {
   font-family: "Songti SC", "Noto Serif SC", STSong, serif;
-  font-size: 30px; font-weight: 900; letter-spacing: 0.1em; color: #fff;
+  font-size: 26px; font-weight: 900; letter-spacing: 0.08em; color: #fff;
 }
 .fp-wordmark .en {
-  font-style: italic; font-size: 17px; font-weight: 400;
-  color: #9FB4E8; margin-left: 6px;
+  font-style: italic; font-size: 15px; font-weight: 400;
+  color: #9FB4E8; margin-left: 4px;
 }
-.fp-hero { margin-top: 40px; }
+.fp-hero { margin-top: 26px; }
 .fp-hero h2 {
   font-family: "Songti SC", "Noto Serif SC", STSong, serif;
-  font-size: 38px; font-weight: 900; line-height: 1.5;
-  letter-spacing: 0.06em; color: #fff; margin: 0;
+  font-size: 32px; font-weight: 900; line-height: 1.55;
+  letter-spacing: 0.05em; color: #fff; margin: 0;
 }
 .fp-hero h2 .hl { color: #A9C0FF; }
-.fp-hero p { margin-top: 18px; font-size: 15px; line-height: 2; color: #B9C6E4; max-width: 26em; }
-.fp-cards { position: relative; height: 200px; margin-top: 44px; }
+.fp-hero p { margin-top: 14px; font-size: 14px; line-height: 1.95; color: #B9C6E4; }
+.fp-cards { position: relative; height: 380px; margin-top: 22px; }
 .fp-card {
-  position: absolute; width: 250px; padding: 18px 20px;
+  position: absolute; width: 225px; padding: 16px 18px;
   border-radius: 12px; border: 1px solid rgba(255,255,255,0.16);
   background: rgba(255,255,255,0.07);
   box-shadow: 0 16px 40px rgba(6,12,30,0.35);
   animation: fp-float 6s ease-in-out infinite;
 }
-.fp-card .q { font-size: 13px; color: #E4EAFB; line-height: 1.8; }
-.fp-card .a { font-size: 12px; color: #93A6D4; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); }
-.fp-card .tag { display: inline-block; font-size: 11px; letter-spacing: 0.15em; color: #A9C0FF; margin-bottom: 8px; }
-.fp-card.c1 { left: 0; top: 0; transform: rotate(-4deg); }
-.fp-card.c2 { left: 190px; top: 56px; transform: rotate(3deg); animation-delay: -3s; }
-.fp-card.c3 { left: 60px; top: 108px; transform: rotate(-1deg); animation-delay: -1.5s; opacity: 0.85; }
-@keyframes fp-float { 0%,100% { margin-top: 0; } 50% { margin-top: -12px; } }
-.fp-features { display: flex; gap: 34px; margin-top: 40px; flex-wrap: wrap; }
-.fp-features .f { font-size: 13px; color: #B9C6E4; }
-.fp-features .f b { display: block; font-size: 15px; color: #fff; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.05em; }
-.fp-foot { font-size: 12px; color: #7C8FB8; letter-spacing: 0.1em; }
+.fp-card .q { font-size: 13px; color: #E4EAFB; line-height: 1.75; }
+.fp-card .a { font-size: 11px; color: #93A6D4; margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); }
+.fp-card .tag { display: inline-block; font-size: 10px; letter-spacing: 0.15em; color: #A9C0FF; margin-bottom: 6px; }
+.fp-card.c1 { left: 8%; top: 0; transform: rotate(-4deg); }
+.fp-card.c2 { left: 42%; top: 72px; transform: rotate(3deg); animation-delay: -3s; }
+.fp-card.c3 { left: 18%; top: 152px; transform: rotate(-1deg); animation-delay: -1.5s; opacity: 0.85; }
+.fp-card.c4 { left: 50%; top: 210px; transform: rotate(2deg); animation-delay: -2s; }
+.fp-card.c5 { left: 30%; top: 296px; transform: rotate(-2deg); animation-delay: -4s; opacity: 0.9; }
+@keyframes fp-float { 0%,100% { margin-top: 0; } 50% { margin-top: -10px; } }
+.fp-features { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+.fp-features .f { font-size: 12px; color: #B9C6E4; }
+.fp-features .f b { font-size: 13px; color: #fff; font-weight: 600; margin-right: 8px; letter-spacing: 0.05em; }
+.fp-foot { font-size: 11px; color: #7C8FB8; letter-spacing: 0.1em; margin-top: 24px; }
 @media (prefers-reduced-motion: reduce) { .fp-card { animation: none; } }
 </style>
 
@@ -101,13 +105,24 @@
           <span class="tag">复习 · REVIEW</span>
           <div class="q">FSRS：按遗忘曲线安排下次复习</div>
         </div>
+        <div class="fp-card c4">
+          <span class="tag">统计 · STATS</span>
+          <div class="q">今日待复习 12 张 · 明日新增 8 张</div>
+          <div class="a">记忆保持率目标 90%，曲线一天比一天平缓。</div>
+        </div>
+        <div class="fp-card c5">
+          <span class="tag">AI 考官 · QUIZ</span>
+          <div class="q">追问：为什么交叉熵不用 sigmoid？</div>
+        </div>
       </div>
+    </div>
+    <div>
       <div class="fp-features">
         <div class="f"><b>AI 自动出卡</b>按标题树切片，代码表格不拆散</div>
         <div class="f"><b>FSRS 间隔重复</b>科学对抗遗忘曲线</div>
         <div class="f"><b>知识溯源</b>每张卡片回到笔记原文</div>
       </div>
+      <div class="fp-foot">DUX SSO · 统一身份认证 · bg5dux.top</div>
     </div>
-    <div class="fp-foot">DUX SSO · 统一身份认证 · bg5dux.top</div>
   </div>
 </div>

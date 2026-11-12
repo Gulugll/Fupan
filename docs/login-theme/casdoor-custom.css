@@ -115,3 +115,106 @@
 .login-panel a:hover {
   color: #23407F;
 }
+
+/* ---- 右侧 Logo 区：隐藏 Casdoor 默认 logo，换成复磐文字字标 ---- */
+.login-logo-box img {
+  display: none;
+}
+.login-logo-box::after {
+  content: "复磐 FuPan";
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", STSong, serif;
+  font-size: 26px;
+  font-weight: 900;
+  color: #22262E;
+  letter-spacing: 0.1em;
+}
+
+/* ---- 修复：Logo 区隐藏残留的空 <a> 标签，字标真正居中 ---- */
+.login-logo-box a {
+  display: none;
+}
+.login-logo-box {
+  justify-content: center;
+}
+
+/* ---- 桌面端全屏分屏：左品牌区铺满高度，右表单垂直居中 ---- */
+@media (min-width: 1024px) {
+  .login-content {
+    padding: 0 !important;
+    flex: 1;
+    display: flex;
+  }
+  .login-content > div {
+    max-width: 100% !important;
+    margin: 0 !important;
+    flex: 1;
+    display: flex;
+  }
+  .login-panel {
+    flex: 1;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    align-items: stretch;
+  }
+  .login-panel .side-image {
+    width: 52% !important;
+  }
+  .login-panel .login-form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 7% !important;
+  }
+}
+
+/* ---- 全屏补充：内容区纵向拉伸 + 顶栏悬浮不占位 ---- */
+@media (min-width: 1024px) {
+  .login-content {
+    align-items: stretch !important;
+  }
+  .login-topbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 20;
+  }
+}
+
+/* ---- 页脚改为右下角悬浮，品牌区真正铺满全高 ---- */
+@media (min-width: 1024px) {
+  #footer {
+    position: absolute;
+    bottom: 10px;
+    right: 20px;
+    padding: 0 !important;
+  }
+}
+
+/* ---- 忘记密码强制右对齐（无视中间是否有其他元素） ---- */
+.login-forget-password a {
+  margin-left: auto;
+}
+
+/* ---- 桌面端收窄表单内容列，左右留白均衡 ---- */
+@media (min-width: 1024px) {
+  .login-panel .login-form {
+    max-width: 400px;
+    width: 100%;
+    margin: 0 auto;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* ---- 忘记密码行：根因是 inline-flex 收缩宽度，改块级 flex 撑满 ---- */
+.login-forget-password {
+  display: flex !important;
+  width: 100% !important;
+}
+.login-forget-password > :last-child {
+  margin-left: auto;
+}
+
+/* 注意：左侧面板（fp-*）的样式一律写在 casdoor-side-panel.html 内，
+   不要放这里——Side panel HTML 的 <style> 注入顺序在本文件之后，会覆盖同名规则。 */
